@@ -12,3 +12,9 @@ Home page: https://vanilla-note.github.io/#
 * Various controls are possible through html tag attribute values.
 * Note control is possible through the provided function API.
 * Vanillanote objects can be used through getNote().
+
+## Anyone can use it very easily.
+1. download min.js file
+2. Include js
+`<script src="../Vanillanote.1.0.0.js"></script>`
+3. Lastly, the div tag is added!
