@@ -16,5 +16,10 @@ Home page: https://vanilla-note.github.io/#
 ## Anyone can use it very easily.
 1. download min.js file
 2. Include js
-`<script src="../Vanillanote.1.0.0.js"></script>`
-3. Lastly, the div tag is added!
+
+<pre>
+```
+<script src="../Vanillanote.1.0.0.js"></script>
+```
+<pre>
+4. Lastly, the div tag is added!
