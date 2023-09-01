@@ -29,3 +29,13 @@ Home page: https://vanilla-note.github.io/#
 &lt;/body&gt;
 </pre>
 
+4. And the submit is done as follows.
+
+<pre>
+function() {
+	const note01 = document.querySelectorAll('[data-vanillanote]')[0];
+	console.log(note01.getNoteData());
+}
+</pre>
+
+#### Vanillanote offers a variety of attributes and API objects. Please refer to the homepage!
