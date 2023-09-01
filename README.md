@@ -2,7 +2,7 @@
 A simple editor using only Vanilla JS and ES5 syntax.<br><br>
 Home page: https://vanilla-note.github.io/#
 
-##Why Vanillanote?
+## Why Vanillanote?
 * It uses only Vanilla JS and ES5 syntax, so it can be applied in a wide range of environments.
 * It separates actions in desktop and mobile environments.
 * Multiple notes can be drawn on a single document.
