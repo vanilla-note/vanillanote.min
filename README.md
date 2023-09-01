@@ -18,7 +18,7 @@ Home page: https://vanilla-note.github.io/#
 2. Include js
 
 <pre>
-&lt;<span style="color: blue;">script</span> src="../Vanillanote.1.0.0.js"&gt;&lt;/<span style="color: blue;">script</span>&gt;
+&lt;script src="../Vanillanote.1.0.0.js"&gt;&lt;/script&gt;
 </pre>
 
 3. Lastly, the div tag is added!
