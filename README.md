@@ -25,9 +25,9 @@ Home page: https://vanilla-note.github.io/#
 
 <pre>
 ```
-<body>
-  <div data-vanillanote></div>
-</body>
+&lt;body&gt;
+  &lt;div data-vanillanote&gt;&lt;/div&gt;
+&lt;/body&gt;
 ```
 </pre>
 
