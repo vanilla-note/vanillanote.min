@@ -19,5 +19,5 @@ Home page: https://vanilla-note.github.io/#
 
 <pre>
 <script src="../Vanillanote.1.0.0.js"></script>
-<pre>
+</pre>
 4. Lastly, the div tag is added!
