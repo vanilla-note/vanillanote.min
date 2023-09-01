@@ -22,3 +22,10 @@ Home page: https://vanilla-note.github.io/#
 </pre>
 
 3. Lastly, the div tag is added!
+
+<pre>
+<body>
+  <div data-vanillanote></div>
+</body>
+</pre>
+
