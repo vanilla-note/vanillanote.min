@@ -50,4 +50,4 @@ hison0319@gmail.com
 
 
 ps.  
-I used a translator for English and am now looking for someone who would be grateful to help with more accurate translation.
+I used a translator for English and am looking for someone who would be grateful to help with more accurate translation.
