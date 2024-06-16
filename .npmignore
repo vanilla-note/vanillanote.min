@@ -1,0 +1,5 @@
+# .npmignore
+
+.git
+node_modules
+.github

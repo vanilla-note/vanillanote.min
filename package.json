@@ -1,0 +1,20 @@
+{
+  "name": "vanillanote.min",
+  "version": "1.0.0",
+  "description": "A simple editor using only Vanilla JS and ES5 syntax.",
+  "main": "dist/Vanillanote.min.1.0.0.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vanilla-note/vanillanote.min.git"
+  },
+  "keywords": ["editor", "note", "vanillanote", "WYSIWYG Editor", "WYSIWYG"],
+  "author": "Hani Son",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/vanilla-note/vanillanote.min/issues"
+  },
+  "homepage": "https://vanilla-note.github.io/"
+}
