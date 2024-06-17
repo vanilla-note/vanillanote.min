@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanillanote Example 2</title>
+    <script src="../dist/Vanillanote.min.1.0.0.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/all.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+        //Before Editor Create
+        function vanillanote_onBeforeCreate(e, vn) {
+            console.log(vn);
+            //Customize CSS
+            vn.csses['on_mouseover'][0] = {
+                'font-size' : '16px',
+                'transition' : 'font-size 0.1s ease-in-out',
+            };
+
+            //Customize Color
+            vn.colors.color1[0] = "#0a6ebd";	//filled
+            vn.colors.color2[0] = "#f6f9fc";	//empty
+            vn.colors.color3[0] = "#ffffff";	//toolbar
+            vn.colors.color4[0] = "#ffffff";	//button
+            vn.colors.color5[0] = "#f0f7fB";	//active
+            vn.colors.color6[0] = "#0a6ebd";	//border
+            vn.colors.color7[0] = "#ffffff";	//box-shadow
+            vn.colors.color10[0] = "#0a6ebd";	//modal text
+            vn.colors.color11[0] = "#666666";	//a tag color
+            vn.colors.color12[0] = "#0a6ebd";	//color 0 text color
+            vn.colors.color13[0] = "#ffffff";	//color 0 text background color
+
+            //Add Language Set
+            vn.languageSet.JPN = {
+                textareaTooltip : '',
+                Thanks : 'ありがとうございます！',
+                styleTooltip : '段落スタイル',
+                boldTooltip : '太字',
+                underlineTooltip : '下線',
+                italicTooltip : '斜体',
+                ulTooltip : 'リスト',
+                olTooltip : '番号付きリスト',
+                textAlignTooltip : 'テキスト整列',
+                attLinkTooltip : 'リンク添付',
+                attFileTooltip : 'ファイル添付',
+                attImageTooltip : '画像添付',
+                attVideoTooltip : 'ビデオ添付',
+                fontSizeTooltip : 'フォントサイズ',
+                letterSpacingTooltip : '文字間隔',
+                lineHeightTooltip : '行の高さ',
+                fontFamilyTooltip : 'フォントファミリー',
+                colorTextTooltip : 'テキストの色',
+                colorTextExplain : '文字の色を選んでください。',
+                colorBackTooltip : '背景色',
+                colorBackExplain : '背景の色を選んでください。',
+                formatClearButtonTooltip : 'エフェクトを削除',
+                undoTooltip : '元に戻す',
+                redoTooltip : 'やり直し',	
+                helpTooltip : 'ヘルプ',
+                attLinkModalTitle : 'リンク挿入',
+                attLinkInTextExplain : '表示するテキストを入力してください。',
+                attLinkInLinkExplain : '遷移するリンクを入力してください。',
+                attLinkIsOpenExplain : ' 新しいウィンドウで開きますか？',
+                attLinkInTextTooltip : 'テキストを入力してください。',
+                attLinkInLinkTooltip : 'リンクを入力してください。',
+                attLinkIsOpenTooltip : 'クリックすると新しいウィンドウで開きます。',
+                attFileModalTitle : 'ファイル挿入',
+                attFileExplain1 : 'ファイルをアップロードしてください。',
+                attFileUploadButton : 'ファイル選択',
+                attFileUploadDiv : 'ファイルをドロップしてください。',
+                attFileListTooltip : '削除',
+                attImageModalTitle : '画像挿入',
+                attImageUploadButtonAndView : '画像の選択',
+                attImageExplain1 : '画像をアップロードしてください。',
+                attImageExplain2 : 'URL',
+                attImageURLTooltip : 'URLを指定してください。',
+                attOverSize : 'ファイルが許容容量を超えました。',
+                attPreventType : 'ファイルは許可されたタイプではありません。',
+                attVideoModalTitle : 'YouTubeの挿入',
+                attVideoExplain1 : 'Youtube Embed Id',
+                attVideoExplain2 : 'フレームサイズ',
+                attVideoEmbedIdTooltip : 'YouTubeのEmbed idを教えてください。',
+                attVideoWidthTooltip : '%',
+                attVideoHeightTooltip : 'PX',
+                attImageAndVideoTooltipWidthInput : '横',
+                attImageAndVideoTooltipFloatRadio : '浮く',
+                attImageAndVideoTooltipShapeRadio : '形',
+                helpModalTitle : '質問',
+                helpContent : [
+                    {'ctrl + z' : '元に戻す'},
+                    {'ctrl + y' : '再実行'},
+                    {'ctrl + b' : '太字'},
+                    {'ctrl + u' : '下線'},
+                    {'ctrl + i' : '傾く'},
+                    {'enter' : '新しいブロックに新しい行が追加されます。'},
+                    {'shift + enter' : '既存のブロックに新しい行を追加します。'},
+                    {'etc1' : 'モバイルでは、ドラッグ後のスタイルの適用のみが可能です。'},
+                    {'etc2' : '動画のアップロードにはYouTube Eembed idを利用する必要があります。'},
+                ],
+            }
+            vn.variables.languages[0] = 'JPN';
+            //This must return true for editor creation to proceed.
+            return true;
+        };
+
+        //After Editor Create
+        function vanillanote_onAfterCreate(e, vn) {
+            //Customize Events
+            vn.elementEvents.boldButton_onBeforeClick = function(e) {
+                const noteIndex = e.target.getAttribute('data-note-index');
+                if(noteIndex === "0") {
+                    alert('This is an alert by customization.');
+                    return true;
+                }
+            }
+            
+            //Change Icon
+            function getFontAwesome(oldEl, iconType, iconId, cssText) {
+                let newEl = document.createElement('i');
+                for (let i = 0; i < oldEl.attributes.length; i++) {
+                    const attr = oldEl.attributes[i];
+                    newEl.setAttribute(attr.name, attr.value);
+                }
+                newEl.classList.remove('material-symbols-rounded');
+                newEl.classList.add(iconType);
+                newEl.classList.add(iconId);
+                if(cssText) {
+                    newEl.setAttribute('style', cssText)
+                }
+                return newEl;
+            };
+            
+            vn.elements.paragraphStyleSelects[0].replaceChild(
+                getFontAwesome(vn.elements.paragraphStyleSelects[0].firstChild, 'fas', 'fa-paragraph'),
+                vn.elements.paragraphStyleSelects[0].firstChild,
+            );
+            vn.elements.boldButtons[0].replaceChild(
+                getFontAwesome(vn.elements.boldButtons[0].firstChild, 'fas', 'fa-bold'),
+                vn.elements.boldButtons[0].firstChild,
+            );
+            vn.elements.underlineButtons[0].replaceChild(
+                getFontAwesome(vn.elements.underlineButtons[0].firstChild, 'fas', 'fa-underline'),
+                vn.elements.underlineButtons[0].firstChild,
+            );
+            vn.elements.italicButtons[0].replaceChild(
+                getFontAwesome(vn.elements.italicButtons[0].firstChild, 'fas', 'fa-italic'),
+                vn.elements.italicButtons[0].firstChild,
+            );
+            vn.elements.ulButtons[0].replaceChild(
+                getFontAwesome(vn.elements.ulButtons[0].firstChild, 'fas', 'fa-list-ul'),
+                vn.elements.ulButtons[0].firstChild,
+            );
+            vn.elements.olButtons[0].replaceChild(
+                getFontAwesome(vn.elements.olButtons[0].firstChild, 'fas', 'fa-list-ol'),
+                vn.elements.olButtons[0].firstChild,
+            );
+            vn.elements.textAlignSelects[0].replaceChild(
+                getFontAwesome(vn.elements.textAlignSelects[0].firstChild, 'fas', 'fa-bars'),
+                vn.elements.textAlignSelects[0].firstChild,
+            );
+            vn.elements.attLinkButtons[0].replaceChild(
+                getFontAwesome(vn.elements.attLinkButtons[0].firstChild, 'fas', 'fa-link'),
+                vn.elements.attLinkButtons[0].firstChild,
+            );
+            vn.elements.attFileButtons[0].replaceChild(
+                getFontAwesome(vn.elements.attFileButtons[0].firstChild, 'fas', 'fa-upload'),
+                vn.elements.attFileButtons[0].firstChild,
+            );
+            vn.elements.attImageButtons[0].replaceChild(
+                getFontAwesome(vn.elements.attImageButtons[0].firstChild, 'fas', 'fa-images'),
+                vn.elements.attImageButtons[0].firstChild,
+            );
+            vn.elements.attVideoButtons[0].replaceChild(
+                getFontAwesome(vn.elements.attVideoButtons[0].firstChild, 'fab', 'fa-youtube'),
+                vn.elements.attVideoButtons[0].firstChild,
+            );
+            vn.elements.fontSizeInputBoxes[0].replaceChild(
+                getFontAwesome(vn.elements.fontSizeInputBoxes[0].firstChild, 'fas', 'fa-font'),
+                vn.elements.fontSizeInputBoxes[0].firstChild,
+            );
+            vn.elements.letterSpacingInputBoxes[0].replaceChild(
+                getFontAwesome(vn.elements.letterSpacingInputBoxes[0].firstChild, 'fas', 'fa-text-width'),
+                vn.elements.letterSpacingInputBoxes[0].firstChild,
+            );
+            vn.elements.lineHeightInputBoxes[0].replaceChild(
+                getFontAwesome(vn.elements.lineHeightInputBoxes[0].firstChild, 'fas', 'fa-text-height'),
+                vn.elements.lineHeightInputBoxes[0].firstChild,
+            );
+            vn.elements.colorTextSelects[0].replaceChild(
+                getFontAwesome(vn.elements.colorTextSelects[0].firstChild, 'fas', 'fa-highlighter'),
+                vn.elements.colorTextSelects[0].firstChild,
+            );
+            vn.elements.colorBackSelects[0].replaceChild(
+                getFontAwesome(vn.elements.colorBackSelects[0].firstChild, 'fas', 'fa-fill-drip'),
+                vn.elements.colorBackSelects[0].firstChild,
+            );
+            vn.elements.formatClearButtons[0].replaceChild(
+                getFontAwesome(vn.elements.formatClearButtons[0].firstChild, 'fas', 'fa-eraser'),
+                vn.elements.formatClearButtons[0].firstChild,
+            );
+            vn.elements.undoButtons[0].replaceChild(
+                getFontAwesome(vn.elements.undoButtons[0].firstChild, 'fas', 'fa-undo-alt'),
+                vn.elements.undoButtons[0].firstChild,
+            );
+            vn.elements.redoButtons[0].replaceChild(
+                getFontAwesome(vn.elements.redoButtons[0].firstChild, 'fas', 'fa-redo-alt'),
+                vn.elements.redoButtons[0].firstChild,
+            );
+            vn.elements.helpButtons[0].replaceChild(
+                getFontAwesome(vn.elements.helpButtons[0].firstChild, 'fas', 'fa-search'),
+                vn.elements.helpButtons[0].firstChild,
+            );
+            
+            //Customize Place holder
+            let tempEl1 = document.createElement('img');
+            tempEl1.src = 'https://images.unsplash.com/photo-1623410439361-22ac19216577?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTQ3fHxibHVlfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60';
+            tempEl1.setAttribute('style','width: 100%;max-height: 350px;opacity: 0.5;object-fit: cover');
+            vn.elements.placeholders[0].appendChild(tempEl1);
+            tempEl1 = document.createElement('div');
+            tempEl1.setAttribute('style','position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);margin: 0;z-index: 100;color: #003366;');
+            let tempEl2 = document.createElement('h4');
+            tempEl2.innerText = 'This is a customized new editor.';
+            tempEl1.appendChild(tempEl2);
+            tempEl2 = document.createElement('h6');
+            tempEl2.innerText = 'これは日本語版です。';
+            tempEl1.appendChild(tempEl2);
+            tempEl1.style.fontSize = '0.8em';
+            vn.elements.placeholders[0].appendChild(tempEl1);
+            tempEl1 = document.createElement('div');
+            tempEl1.setAttribute('style','width: 100%;padding-right: 5px;position: absolute;bottom: 15px;z-index: 100;text-align: right;font-size: 0.8em;color: #003366;');
+            tempEl1.innerText = 'Photo credit:\nfrom Marcel Strauß on Unsplash.';
+            tempEl1.style.fontSize = '0.6em';
+            vn.elements.placeholders[0].appendChild(tempEl1);
+            vn.elements.placeholders[0].style.padding = '0';
+        }
+        
+    </script>
+</head>
+<body>
+    <h2>Example 2</h2>
+    <br>
+    <div style="max-width: 800px;">
+        <div data-vanillanote
+        textarea-max-height="400px"
+        add-font-family="Noto Sans JP"
+        default-font-family="Noto Sans JP"
+        placeholder-is-visible="true"
+        placeholder-title=""
+        placeholder-text-content=""
+        >
+        </div>
+    </div>
+</body>
+</html>
