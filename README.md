@@ -2,8 +2,7 @@
 A simple editor using only Vanilla JS and ES5 syntax.<br><br>
 
 Download Vanillanote v1.0.0 release
-or
-<pre>npm i vanillanote</pre>pre>
+Or <pre>npm i vanillanote</pre>
 Home page: https://vanilla-note.github.io
 
 ## Why Vanillanote?
