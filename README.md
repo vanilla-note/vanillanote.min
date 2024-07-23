@@ -2,7 +2,7 @@
 A simple editor using only Vanilla JS and ES5 syntax.<br><br>
 
 ### Download Vanillanote v1.0.0 release!
-### Or <pre>npm i vanillanote</pre>
+### Or Use npm & webpack
 Home page: https://vanilla-note.github.io
 
 ## Why Vanillanote?
@@ -21,7 +21,7 @@ Home page: https://vanilla-note.github.io
 <pre>npm i vanillagrid</pre>
 
 <pre>
-//index.js(bundle.js)
+//index.js(If use webpack bundle.js)
 import { getVanillanote, vanillanote_onCreate, vanillanote_onDestroy } from 'vanillanote';
 
 const vn = getVanillanote();
