@@ -14,14 +14,25 @@ Home page: https://vanilla-note.github.io
 * Vanillanote objects can be used through getNote().
 
 ## Anyone can use it very easily.
-1. download min.js file
-2. Include js
+### 1-1. use npm & webpack
+<pre>npm i vanillagrid</pre>
+
+<pre>
+//index.js(bundle.js)
+import { getVanillanote, vanillanote_onCreate, vanillanote_onDestroy } from 'vanillanote';
+
+const vn = getVanillanote();
+vanillanote_onCreate(vn);
+//vanillanote_onDestroy(vn);
+</pre>
+
+### 1-2. Or Include min.js file and use src
 
 <pre>
 &lt;script src="../Vanillanote.min.1.0.0.js"&gt;&lt;/script&gt;
 </pre>
 
-3. Lastly, the div tag is added!
+### 2. Lastly, the div tag is added!
 
 <pre>
 &lt;body&gt;
@@ -29,7 +40,7 @@ Home page: https://vanilla-note.github.io
 &lt;/body&gt;
 </pre>
 
-4. And the submit is done as follows.
+### 3. And the submit is done as follows.
 
 <pre>
 function() {
@@ -46,8 +57,3 @@ Vanillanote is developed by one person. It was developed for javascript learning
 ## Contact
 hani son.  
 hison0319@gmail.com
-
-
-
-ps.  
-I used a translator for English and am looking for someone who would be grateful to help with more accurate translation.
