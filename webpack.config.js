@@ -1,10 +1,10 @@
 const path = require('path');
 
 module.exports = {
-  entry: './src/Vanillanote.js', // 소스 파일 경로
+  entry: './src/Vanillanote.js',
   output: {
-    filename: 'Vanillanote.1.0.0.js', // 번들링된 파일명
-    path: path.resolve(__dirname, 'dist'), // 출력 디렉토리
+    filename: 'Vanillanote.webpack.1.0.0.js',
+    path: path.resolve(__dirname, 'dist'),
     library: 'Vanillanote',
     libraryTarget: 'umd',
     globalObject: 'this'
