@@ -30,6 +30,8 @@ vanillanote_onCreate(vn);
 </pre>
 
 ### 1-2. Or Include min.js file and use src
+#### ※ The dist/Vanillanote.min.1.0.0.js file of git vanillanote.min can be used as a header declaration.
+#### ※ The dist/Vanillanote.webpack.1.0.0.js file in git vanillanote.min is used in the webpack method.
 
 <pre>
 &lt;script src="../Vanillanote.min.1.0.0.js"&gt;&lt;/script&gt;
