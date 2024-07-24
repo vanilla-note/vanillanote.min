@@ -21,7 +21,7 @@ Home page: https://vanilla-note.github.io
 <pre>npm i vanillagrid</pre>
 
 <pre>
-//index.js(If use webpack bundle.js)
+//src/index.js
 import { getVanillanote, vanillanote_onCreate, vanillanote_onDestroy } from 'vanillanote';
 
 const vn = getVanillanote();

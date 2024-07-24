@@ -3,7 +3,7 @@ const path = require('path');
 module.exports = {
   entry: './src/Vanillanote.js',
   output: {
-    filename: 'Vanillanote.webpack.1.0.0.js',
+    filename: 'Vanillanote.bundle.js',
     path: path.resolve(__dirname, 'dist'),
     library: 'Vanillanote',
     libraryTarget: 'umd',
