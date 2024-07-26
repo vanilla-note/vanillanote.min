@@ -30,15 +30,16 @@ vanillanote_onCreate(vn);
 </pre>
 
 ### 1-2. Or Include min.js file and use src
-#### ※ The dist/Vanillanote.min.1.0.0.js file of git vanillanote.min can be used as a header declaration.
-#### ※ The dist/Vanillanote.bundle.js file in git vanillanote.min is used in the webpack method.
-#### ※ The header declaration method through the Vanillanote.min file automatically manages the life cycle of the vanilla note, while the webpack method through the Vanillanote.bundle file requires the user to manage the life cycle.
 
 <pre>
 &lt;script src="../Vanillanote.min.1.0.0.js"&gt;&lt;/script&gt;
 </pre>
 
-### 2. Lastly, the div tag is added!
+#### ※ The dist/Vanillanote.min.1.0.0.js file of git vanillanote.min can be used as a header declaration.
+#### ※ The dist/Vanillanote.bundle.js file in git vanillanote.min is used in the webpack method.
+#### ※ The header declaration method through the Vanillanote.min file automatically manages the life cycle of the vanilla note, while the webpack method through the Vanillanote.bundle file requires the user to manage the life cycle.
+
+### 2. The div tag is added!
 
 <pre>
 &lt;body&gt;
@@ -46,7 +47,7 @@ vanillanote_onCreate(vn);
 &lt;/body&gt;
 </pre>
 
-### 3. And the submit is done as follows.
+### 3. Lastly, the submit is done as follows.
 
 <pre>
 function() {
