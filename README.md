@@ -1,7 +1,8 @@
 # vanillanote.min
 A simple editor using only Vanilla JS and ES5 syntax.<br><br>
 
-### Download Vanillanote v1.0.0 release!
+### Download Vanillanote v1.0.8 release!
+https://github.com/vanilla-note/vanillanote.min/releases/tag/v1.0.0
 ### Or Use npm & webpack
 Home page: https://vanilla-note.github.io
 
