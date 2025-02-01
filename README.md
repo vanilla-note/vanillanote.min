@@ -1,7 +1,7 @@
 # vanillanote.min
 A simple editor using only Vanilla JS and ES5 syntax.<br><br>
 
-### Download Vanillanote v1.0.8 release!
+### Download Vanillanote v1.0.9 release!
 https://github.com/vanilla-note/vanillanote.min/releases/tag/v1.0.0
 ### Or Use npm & webpack
 Home page: https://vanilla-note.github.io
@@ -12,7 +12,7 @@ Home page: https://vanilla-note.github.io
 * Multiple notes can be drawn on a single document.
 * Available in languages other than English.(ex. Korean)
 * It is implemented to have minimal impact on existing css or javascript sources.
-* Not using innerHTML and eval..
+* Not using innerHTML and eval.
 * Various controls are possible through html tag attribute values.
 * Note control is possible through the provided function API.
 * Vanillanote objects can be used through getNote().
@@ -33,10 +33,10 @@ createVanillanote(vn);
 ### 1-2. Or Include min.js file and use src
 
 <pre>
-&lt;script src="../Vanillanote.min.1.0.8.js"&gt;&lt;/script&gt;
+&lt;script src="../Vanillanote.min.1.0.9.js"&gt;&lt;/script&gt;
 </pre>
 
-#### ※ The dist/Vanillanote.min.1.0.8.js file of git vanillanote.min can be used as a header declaration.
+#### ※ The dist/Vanillanote.min.1.0.9.js file of git vanillanote.min can be used as a header declaration.
 #### ※ The dist/Vanillanote.bundle.js file in git vanillanote.min is used in the webpack method.
 #### ※ The header declaration method through the Vanillanote.min file automatically manages the life cycle of the vanilla note, while the webpack method through the Vanillanote.bundle file requires the user to manage the life cycle.
 

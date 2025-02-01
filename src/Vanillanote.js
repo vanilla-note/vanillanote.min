@@ -3662,7 +3662,6 @@ function createVanillanote(Vanillanote) {
 			}
 			else if(Vanillanote.consts.UNIT_TAG.indexOf(selectedNodes[i].tagName) >= 0) {	// For unit tags, set the insert position.
 				tempUnitEl = selectedNodes[i];
-				isAppend = true;
 			}
 		}
 		
