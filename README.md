@@ -18,24 +18,24 @@ Home page: https://vanilla-note.github.io
 
 ## Anyone can use it very easily.
 ### 1-1. use npm & webpack
-<pre>npm i vanillagrid</pre>
+<pre>npm i vanillanote</pre>
 
 <pre>
 //src/index.js
-import { getVanillanote, vanillanote_onCreate, vanillanote_onDestroy } from 'vanillanote';
+import { getVanillanote, createVanillanote, destroyVanillanote } from 'vanillanote';
 
 const vn = getVanillanote();
-vanillanote_onCreate(vn);
-//vanillanote_onDestroy(vn);
+createVanillanote(vn);
+//destroyVanillanote(vn);
 </pre>
 
 ### 1-2. Or Include min.js file and use src
 
 <pre>
-&lt;script src="../Vanillanote.min.1.0.0.js"&gt;&lt;/script&gt;
+&lt;script src="../Vanillanote.min.1.0.8.js"&gt;&lt;/script&gt;
 </pre>
 
-#### ※ The dist/Vanillanote.min.1.0.0.js file of git vanillanote.min can be used as a header declaration.
+#### ※ The dist/Vanillanote.min.1.0.8.js file of git vanillanote.min can be used as a header declaration.
 #### ※ The dist/Vanillanote.bundle.js file in git vanillanote.min is used in the webpack method.
 #### ※ The header declaration method through the Vanillanote.min file automatically manages the life cycle of the vanilla note, while the webpack method through the Vanillanote.bundle file requires the user to manage the life cycle.
 
