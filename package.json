@@ -1,10 +1,17 @@
 {
   "name": "vanillanote",
-  "version": "1.0.9",
+  "version": "1.0.9-beta.4",
   "description": "A simple editor using only Vanilla JS and ES5 syntax.",
   "main": "dist/Vanillanote.bundle.js",
+  "module": "dist/Vanillanote.bundle.js",
+  "types": "dist/types/Vanillanote.d.ts",
+  "exports": {
+    "import": "./dist/Vanillanote.bundle.js",
+    "require": "./dist/Vanillanote.bundle.cjs",
+    "default": "./dist/Vanillanote.bundle.js"
+  },
   "scripts": {
-    "build": "webpack",
+    "build": "tsc && webpack",
     "lint": "eslint 'src/**/*.ts'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -25,7 +32,6 @@
     "url": "https://github.com/vanilla-note/vanillanote.min/issues"
   },
   "homepage": "https://vanilla-note.github.io/",
-  "dependencies": {},
   "devDependencies": {
     "@babel/core": "^7.0.0",
     "@babel/preset-env": "^7.0.0",
