@@ -1,15 +1,17 @@
 {
     "compilerOptions": {
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "outDir": "dist/types",
         "target": "ES6",
         "module": "ESNext",
         "moduleResolution": "node",
         "strict": true,
         "noImplicitThis": false,
-        "outDir": "dist",
         "rootDir": "src",
         "esModuleInterop": true,
         "allowJs": true,
         "lib": ["ES2021","DOM","DOM.Iterable"]
     },
-    "include": ["src"]
+    "include": ["src/**/*.ts"]
 }
