@@ -1,0 +1,34 @@
+# Node.js 관련K
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 빌드 아웃풋
+dist/
+*.log
+
+# 환경 설정 파일
+.env
+.env.local;
+.env.*.local
+
+# TypeScript 관련
+*.tsbuildinfo
+#*.d.ts
+
+# IDE/에디터 관련
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Webpack 관련
+#webpack.config.js
+
+# OS/에디터에서 생성되는 파일
+.DS_Store
+Thumbs.db
+
+# 라이브러리/모듈 개발 중, 최종 사용자가 항상 최신 버전을 사용해야함
+package-lock.json
