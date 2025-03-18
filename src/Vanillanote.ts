@@ -1,24 +1,10 @@
 import {
 	Vanillanote,
-	VanillanoteConstructor
+	VanillanoteConstructor,
+	VanillanoteElement
 } from './index'
 
-/**
-* Vanillanote Object
-* @description 
-* Global Object
-* consts			: Constants that should not be modified
-* csses				: Css
-* keyframes			: Css keyframes
-* colors			: Css colors
-* elements			: any storage
-* variables			: Variable storage
-* languageSet		: Language pack
-* public events
-* public functions
-*/
 function getVanillanote(): Vanillanote {
-	/* @preserve */
 	function VanillanoteInstance() {
 		//cosnt
 		this.consts = {
@@ -815,7 +801,8 @@ function getVanillanote(): Vanillanote {
 			recodeNotes : [],
 			recodeContings : [],
 			recodeLimit : [],
-			lastScreenHeight : window.visualViewport ? window.visualViewport.height : null,
+			lastScreenHeight : null,
+			isIOS : false,
 			mobileKeyboardExceptHeight : null,
 			isSelectionProgress : false,
 			preventChangeScroll : 0,
@@ -831,7 +818,6 @@ function getVanillanote(): Vanillanote {
 			placeholderAddTop : [],
 			placeholderAddLeft : [],
 			placeholderWidth : [],
-			isIOS : /iPhone|iPad|iPod/i.test(navigator.userAgent),
 			editSelections: [],
 			editRanges : [],
 			startOffsets : [],
@@ -1539,10 +1525,11 @@ function getVanillanote(): Vanillanote {
 			keydown : null,
 			resize : null,
 			resizeViewport : null,
-		}
+		};
 		//==================================================================================
 		//public functions
 		//==================================================================================
+		this.getVanillanoteElement;
 		this._beforeAlert = function(message: string) {return true;}
 	}
 	return new (VanillanoteInstance as unknown as VanillanoteConstructor)();
@@ -1550,10 +1537,24 @@ function getVanillanote(): Vanillanote {
 //==================================================================================
 //create vanilla note
 //==================================================================================
-function createVanillanote(Vanillanote: Vanillanote) {
+function createVanillanote(vn: Vanillanote) {
+	//The logic for using document, window and navigator to use getVanillanote in an SSR environment is declared below.
+	vn.variables.lastScreenHeight =  typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : null;
+	vn.variables.isIOS = typeof navigator !== 'undefined' ? /iPhone|iPad|iPod/i.test(navigator.userAgent) : false;
+	vn.getVanillanoteElement = function(noteIndexOrId: number | string): VanillanoteElement | null {
+		var vanillanoteElement = null;
+		if(typeof noteIndexOrId === 'string') {
+			vanillanoteElement = document.querySelector(`[data-note-id='${noteIndexOrId}']`) as VanillanoteElement;
+		}
+		else {
+			vanillanoteElement = document.querySelectorAll('[data-vanillanote]')[noteIndexOrId] as VanillanoteElement;
+		}
+		return vanillanoteElement;
+	};
+
 	//if there is no note, no create.
-	Vanillanote.elements.notes = document.querySelectorAll('[data-vanillanote]');
-	if(Vanillanote.elements.notes.length <= 0) return;
+	vn.elements.notes = document.querySelectorAll('[data-vanillanote]');
+	if(vn.elements.notes.length <= 0) return;
 	
 	//element,variable
 	var note: any, template: any, tool: any, textarea: any;
@@ -1613,7 +1614,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @returns {String} element id.
 	*/
 	var getId = function(idx: string | number, id: string) {
-		return Vanillanote.variables.noteName + "_" + idx + "_" + id;
+		return vn.variables.noteName + "_" + idx + "_" + id;
 	};
 	
 	/**
@@ -1624,7 +1625,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	 * @returns {String} element className.
 	 */
 	var getPublicClassName = function(idx: string, className: string) {
-		return Vanillanote.variables.noteName + "_" + className;
+		return vn.variables.noteName + "_" + className;
 	};
 	
 	/**
@@ -1635,7 +1636,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @returns {String} element className.
 	*/
 	var getClassName = function(idx: string | number, className: string) {
-		return Vanillanote.variables.noteName + "_" + className + " " + Vanillanote.variables.noteName + "_" + idx + "_" + className;
+		return vn.variables.noteName + "_" + className + " " + vn.variables.noteName + "_" + idx + "_" + className;
 	};
 	
 	/**
@@ -1644,7 +1645,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @returns {String} className.
 	*/
 	var getEventChildrenClassName = function() {
-		return Vanillanote.variables.noteName + "_eventChildren";
+		return vn.variables.noteName + "_eventChildren";
 	};
 	
 	/**
@@ -1653,7 +1654,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @returns {String} className.
 	*/
 	var getOnOverCssEventElementClassName = function() {
-		return Vanillanote.variables.noteName + "_eventOnOverCssElement";
+		return vn.variables.noteName + "_eventOnOverCssElement";
 	};
 	
 	/**
@@ -1662,7 +1663,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @returns {String} className.
 	*/
 	var getClickCssEventElementClassName = function() {
-		return Vanillanote.variables.noteName + "_eventClickCssElement";
+		return vn.variables.noteName + "_eventClickCssElement";
 	};
 	
 	/**
@@ -2192,17 +2193,17 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	var onEventDisable = function(type: string) {
 		var interval
 		if(type === "resize") {
-			interval = Vanillanote.variables.resizeInterval;
+			interval = vn.variables.resizeInterval;
 		}
 		else {
-			interval = Vanillanote.variables.inputInterval;
+			interval = vn.variables.inputInterval;
 		}
 		// Temporarily block user input
-		Vanillanote.variables.canEvents = false;
+		vn.variables.canEvents = false;
 		
 		// Allow user input again after 0.05 seconds
 		setTimeout(function() {
-			Vanillanote.variables.canEvents = true;
+			vn.variables.canEvents = true;
 		}, interval);
 	};
 	
@@ -2222,10 +2223,10 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		
 		// Compares the two elements and modifies the different parts.
 		var replaceElements = function(el1: any, el2: any) {
-			if (el1.tagName !== (Vanillanote.variables.noteName+"-textarea").toUpperCase()
-				&& el2.tagName !== (Vanillanote.variables.noteName+"-textarea").toUpperCase()
-				&& Vanillanote.consts.NOT_SINGLE_TAG.indexOf(el1.tagName) >= 0
-				&& Vanillanote.consts.NOT_SINGLE_TAG.indexOf(el2.tagName) >= 0
+			if (el1.tagName !== (vn.variables.noteName+"-textarea").toUpperCase()
+				&& el2.tagName !== (vn.variables.noteName+"-textarea").toUpperCase()
+				&& vn.consts.NOT_SINGLE_TAG.indexOf(el1.tagName) >= 0
+				&& vn.consts.NOT_SINGLE_TAG.indexOf(el2.tagName) >= 0
 				&& (el1.nodeType !== el2.nodeType || 
 				el1.tagName !== el2.tagName ||
 				!compareAttributesBetweenEl(el1, el2) ||
@@ -2236,10 +2237,10 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				if(!newStartNode) newStartNode = tempEl;
 				newEndNode = tempEl;
 			}
-			else if (el1.tagName !== (Vanillanote.variables.noteName+"-textarea").toUpperCase()
-				&& el2.tagName !== (Vanillanote.variables.noteName+"-textarea").toUpperCase()
-				&& Vanillanote.consts.NOT_SINGLE_TAG.indexOf(el1.tagName) < 0
-				&& Vanillanote.consts.NOT_SINGLE_TAG.indexOf(el2.tagName) < 0
+			else if (el1.tagName !== (vn.variables.noteName+"-textarea").toUpperCase()
+				&& el2.tagName !== (vn.variables.noteName+"-textarea").toUpperCase()
+				&& vn.consts.NOT_SINGLE_TAG.indexOf(el1.tagName) < 0
+				&& vn.consts.NOT_SINGLE_TAG.indexOf(el2.tagName) < 0
 				&& (el1.nodeType !== el2.nodeType || 
 					el1.tagName !== el2.tagName ||
 					el1.textContent !== el2.textContent ||
@@ -2308,8 +2309,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var handleSpecialTagSelection = function(noteIndex: number) {
 		closeAllTooltip(noteIndex);
-		if(!Vanillanote.variables.editRanges[noteIndex]!.collapsed) return;
-		var tagName = getSpecialTag(Vanillanote.variables.editStartNodes[noteIndex]);
+		if(!vn.variables.editRanges[noteIndex]!.collapsed) return;
+		var tagName = getSpecialTag(vn.variables.editStartNodes[noteIndex]);
 		
 		switch(tagName) {
 			case "A":
@@ -2386,11 +2387,11 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {Number} noteIndex - The index of the note to set the original edit selection for.
 	*/
 	var setOriginEditSelection = function(noteIndex: number) {
-		if(Vanillanote.variables.editRanges[noteIndex]) {
-			Vanillanote.variables.setEditStyleTagToggle = 2;	// The 'selectiononchange' event usually occurs twice (once when removed and once when added back).
+		if(vn.variables.editRanges[noteIndex]) {
+			vn.variables.setEditStyleTagToggle = 2;	// The 'selectiononchange' event usually occurs twice (once when removed and once when added back).
 		    var selection = window.getSelection();
 		    selection!.removeAllRanges();
-		    selection!.addRange(Vanillanote.variables.editRanges[noteIndex]);
+		    selection!.addRange(vn.variables.editRanges[noteIndex]);
 		}
 	};
 	
@@ -2406,83 +2407,83 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		if(selection.rangeCount < 1) return false;
 		if(!isInTextarea()) return false;
 		
-		Vanillanote.variables.editSelections[noteIndex] = selection;
-		Vanillanote.variables.editRanges[noteIndex] = Vanillanote.variables.editSelections[noteIndex].getRangeAt(0);
+		vn.variables.editSelections[noteIndex] = selection;
+		vn.variables.editRanges[noteIndex] = vn.variables.editSelections[noteIndex].getRangeAt(0);
 		
-		Vanillanote.variables.startOffsets[noteIndex] = Vanillanote.variables.editRanges[noteIndex].startOffset;
-		Vanillanote.variables.endOffsets[noteIndex] = Vanillanote.variables.editRanges[noteIndex].endOffset;
+		vn.variables.startOffsets[noteIndex] = vn.variables.editRanges[noteIndex].startOffset;
+		vn.variables.endOffsets[noteIndex] = vn.variables.editRanges[noteIndex].endOffset;
 		
-		Vanillanote.variables.editStartNodes[noteIndex] = Vanillanote.variables.editRanges[noteIndex].startContainer;
-		Vanillanote.variables.editEndNodes[noteIndex] = Vanillanote.variables.editRanges[noteIndex].endContainer;
+		vn.variables.editStartNodes[noteIndex] = vn.variables.editRanges[noteIndex].startContainer;
+		vn.variables.editEndNodes[noteIndex] = vn.variables.editRanges[noteIndex].endContainer;
 		
 		// If the start node is an element, find the first text node within the element.
-		if(Vanillanote.variables.editStartNodes[noteIndex] instanceof Element) {
-			while(Vanillanote.variables.editStartNodes[noteIndex] instanceof Element) {
-				if(!Vanillanote.variables.editStartNodes[noteIndex].firstChild) break;
-				if((Vanillanote.variables.editStartNodes[noteIndex] as any).firstChild.tagName === "BR") break;	//no br
-				Vanillanote.variables.editStartNodes[noteIndex] = Vanillanote.variables.editStartNodes[noteIndex].firstChild;
-				if(Vanillanote.variables.editStartNodes[noteIndex].nodeType === 3) break;
+		if(vn.variables.editStartNodes[noteIndex] instanceof Element) {
+			while(vn.variables.editStartNodes[noteIndex] instanceof Element) {
+				if(!vn.variables.editStartNodes[noteIndex].firstChild) break;
+				if((vn.variables.editStartNodes[noteIndex] as any).firstChild.tagName === "BR") break;	//no br
+				vn.variables.editStartNodes[noteIndex] = vn.variables.editStartNodes[noteIndex].firstChild;
+				if(vn.variables.editStartNodes[noteIndex].nodeType === 3) break;
 			}
-			Vanillanote.variables.startOffsets[noteIndex] = 0;
+			vn.variables.startOffsets[noteIndex] = 0;
 		}
 		// If the end node is an element, find the first text node within the element.
-		if(Vanillanote.variables.editEndNodes[noteIndex] instanceof Element) {
-			while(Vanillanote.variables.editEndNodes[noteIndex] instanceof Element) {
-				if(!Vanillanote.variables.editEndNodes[noteIndex].firstChild) break;
-				if((Vanillanote.variables.editEndNodes[noteIndex] as any).firstChild.tagName === "BR") break;	//no br
-				Vanillanote.variables.editEndNodes[noteIndex] = Vanillanote.variables.editEndNodes[noteIndex].firstChild;
-				if(Vanillanote.variables.editEndNodes[noteIndex].nodeType === 3) break;
+		if(vn.variables.editEndNodes[noteIndex] instanceof Element) {
+			while(vn.variables.editEndNodes[noteIndex] instanceof Element) {
+				if(!vn.variables.editEndNodes[noteIndex].firstChild) break;
+				if((vn.variables.editEndNodes[noteIndex] as any).firstChild.tagName === "BR") break;	//no br
+				vn.variables.editEndNodes[noteIndex] = vn.variables.editEndNodes[noteIndex].firstChild;
+				if(vn.variables.editEndNodes[noteIndex].nodeType === 3) break;
 			}
-			Vanillanote.variables.endOffsets[noteIndex] = 0;
+			vn.variables.endOffsets[noteIndex] = 0;
 		}
 		
-		Vanillanote.variables.editStartElements[noteIndex] = Vanillanote.variables.editRanges[noteIndex].startContainer instanceof Element ?
-													Vanillanote.variables.editRanges[noteIndex].startContainer : Vanillanote.variables.editRanges[noteIndex].startContainer.parentNode;
-		Vanillanote.variables.editEndElements[noteIndex] = Vanillanote.variables.editRanges[noteIndex].endContainer instanceof Element ?
-													Vanillanote.variables.editRanges[noteIndex].endContainer : Vanillanote.variables.editRanges[noteIndex].endContainer.parentNode;
+		vn.variables.editStartElements[noteIndex] = vn.variables.editRanges[noteIndex].startContainer instanceof Element ?
+													vn.variables.editRanges[noteIndex].startContainer : vn.variables.editRanges[noteIndex].startContainer.parentNode;
+		vn.variables.editEndElements[noteIndex] = vn.variables.editRanges[noteIndex].endContainer instanceof Element ?
+													vn.variables.editRanges[noteIndex].endContainer : vn.variables.editRanges[noteIndex].endContainer.parentNode;
 		
 		// If the start element is a unit element, find the deepest child unit element.
-		if(Vanillanote.consts.UNIT_TAG.indexOf((Vanillanote.variables.editStartElements[noteIndex] as any).tagName) > 0) {
-			while(Vanillanote.consts.UNIT_TAG.indexOf((Vanillanote.variables.editStartElements[noteIndex] as any).tagName) > 0) {
-				Vanillanote.variables.editStartElements[noteIndex] = (Vanillanote.variables.editStartElements[noteIndex] as any).firstChild;
+		if(vn.consts.UNIT_TAG.indexOf((vn.variables.editStartElements[noteIndex] as any).tagName) > 0) {
+			while(vn.consts.UNIT_TAG.indexOf((vn.variables.editStartElements[noteIndex] as any).tagName) > 0) {
+				vn.variables.editStartElements[noteIndex] = (vn.variables.editStartElements[noteIndex] as any).firstChild;
 			}
 		}
 		// If the end element is a unit element, find the deepest child unit element.
-		if(Vanillanote.consts.UNIT_TAG.indexOf((Vanillanote.variables.editEndElements[noteIndex] as any).tagName) > 0) {
-			while(Vanillanote.consts.UNIT_TAG.indexOf((Vanillanote.variables.editEndElements[noteIndex] as any).tagName) > 0) {
-				Vanillanote.variables.editEndElements[noteIndex] = (Vanillanote.variables.editEndElements[noteIndex] as any).lastChild;
+		if(vn.consts.UNIT_TAG.indexOf((vn.variables.editEndElements[noteIndex] as any).tagName) > 0) {
+			while(vn.consts.UNIT_TAG.indexOf((vn.variables.editEndElements[noteIndex] as any).tagName) > 0) {
+				vn.variables.editEndElements[noteIndex] = (vn.variables.editEndElements[noteIndex] as any).lastChild;
 			}
 		}
 		// If the start element is a <br> tag, update it to the parent node.
-		if(Vanillanote.variables.editStartElements[noteIndex] instanceof Element &&
-				Vanillanote.variables.editStartElements[noteIndex].tagName === "BR") {
-			Vanillanote.variables.editStartElements[noteIndex] = Vanillanote.variables.editStartElements[noteIndex].parentNode;
+		if(vn.variables.editStartElements[noteIndex] instanceof Element &&
+				vn.variables.editStartElements[noteIndex].tagName === "BR") {
+			vn.variables.editStartElements[noteIndex] = vn.variables.editStartElements[noteIndex].parentNode;
 		}
 		// If the end element is a <br> tag, update it to the parent node.
-		if(Vanillanote.variables.editEndElements[noteIndex] instanceof Element &&
-				Vanillanote.variables.editEndElements[noteIndex].tagName === "BR") {
-			Vanillanote.variables.editEndElements[noteIndex] = Vanillanote.variables.editEndElements[noteIndex].parentNode;
+		if(vn.variables.editEndElements[noteIndex] instanceof Element &&
+				vn.variables.editEndElements[noteIndex].tagName === "BR") {
+			vn.variables.editEndElements[noteIndex] = vn.variables.editEndElements[noteIndex].parentNode;
 		}
 		//If the start element is textarea, be start element to null
-		if((Vanillanote.variables.editStartElements[noteIndex] as any).tagName === (Vanillanote.variables.noteName+"-textarea").toUpperCase()) {
-			Vanillanote.variables.editStartElements[noteIndex] = null;
+		if((vn.variables.editStartElements[noteIndex] as any).tagName === (vn.variables.noteName+"-textarea").toUpperCase()) {
+			vn.variables.editStartElements[noteIndex] = null;
 		}
 		//If the end element is textarea, be end element to null
-		if((Vanillanote.variables.editEndElements[noteIndex] as any).tagName === (Vanillanote.variables.noteName+"-textarea").toUpperCase()) {
-			Vanillanote.variables.editEndElements[noteIndex] = null;
+		if((vn.variables.editEndElements[noteIndex] as any).tagName === (vn.variables.noteName+"-textarea").toUpperCase()) {
+			vn.variables.editEndElements[noteIndex] = null;
 		}
 		// Get the parent unit elements of the start and end elements.
-		Vanillanote.variables.editStartUnitElements[noteIndex] = getParentUnitTagElemnt(Vanillanote.variables.editStartElements[noteIndex]);
-		Vanillanote.variables.editEndUnitElements[noteIndex] = getParentUnitTagElemnt(Vanillanote.variables.editEndElements[noteIndex]);
+		vn.variables.editStartUnitElements[noteIndex] = getParentUnitTagElemnt(vn.variables.editStartElements[noteIndex]);
+		vn.variables.editEndUnitElements[noteIndex] = getParentUnitTagElemnt(vn.variables.editEndElements[noteIndex]);
 		// Clear and populate the array with all unit elements within the selection.
-		Vanillanote.variables.editDragUnitElements[noteIndex].splice(0, Vanillanote.variables.editDragUnitElements[noteIndex].length); //initial array
+		vn.variables.editDragUnitElements[noteIndex].splice(0, vn.variables.editDragUnitElements[noteIndex].length); //initial array
 		
 		var dragElements = modifySeletedElements(noteIndex);
 		var unitElement
 		for(var i = 0; i < dragElements.length; i++) {
 			unitElement = getParentUnitTagElemnt(dragElements[i]);
-			if(Vanillanote.variables.editDragUnitElements[noteIndex].includes(unitElement)) continue;
-			Vanillanote.variables.editDragUnitElements[noteIndex].push(unitElement);
+			if(vn.variables.editDragUnitElements[noteIndex].includes(unitElement)) continue;
+			vn.variables.editDragUnitElements[noteIndex].push(unitElement);
 		}
 		// Set style and tag based on the selected elements.
 		setEditStyleTag(noteIndex);
@@ -2499,9 +2500,9 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	 * @returns {Boolean} - if vaild, return true
 	 */
 	var isValidSelection =  function(noteIndex: number) {
-		if(!Vanillanote.variables.editRanges[noteIndex]) return false;
-		if(!Vanillanote.variables.editStartElements[noteIndex]) return false;
-		if(!Vanillanote.variables.editStartUnitElements[noteIndex]) return false;
+		if(!vn.variables.editRanges[noteIndex]) return false;
+		if(!vn.variables.editStartElements[noteIndex]) return false;
+		if(!vn.variables.editStartUnitElements[noteIndex]) return false;
 		return true;
 	} 
 	
@@ -2515,15 +2516,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var element = el;
 		while(element) {
 			//p, h1, h2, h3, h4, h5, h6, li
-			if(Vanillanote.consts.UNIT_TAG.indexOf(element.tagName) >= 0) {
+			if(vn.consts.UNIT_TAG.indexOf(element.tagName) >= 0) {
 				break;	
 			}
  			// If the element's tag name is  'ul' or 'ol'
-			if(Vanillanote.consts.DOUBLE_TAG.indexOf(element.tagName) >= 0) {
+			if(vn.consts.DOUBLE_TAG.indexOf(element.tagName) >= 0) {
 				element = element.lastElementChild!;
 				break;	
 			}
-			if(element.tagName === (Vanillanote.variables.noteName+"-textarea").toUpperCase()) {
+			if(element.tagName === (vn.variables.noteName+"-textarea").toUpperCase()) {
 				return null;
 			}
 			element = element.parentNode!;
@@ -2542,8 +2543,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		if(!el) return tagName;
 		if(!el.parentNode) return tagName;
 		if(!el.parentNode.tagName) return tagName;
-		if(Vanillanote.consts.UNIT_TAG.indexOf(el.parentNode.tagName) >= 0) return tagName;
-		if(Vanillanote.consts.AUTO_MODIFY_TAG.indexOf(el.parentNode.tagName) >= 0) return tagName;
+		if(vn.consts.UNIT_TAG.indexOf(el.parentNode.tagName) >= 0) return tagName;
+		if(vn.consts.AUTO_MODIFY_TAG.indexOf(el.parentNode.tagName) >= 0) return tagName;
 		return el.parentNode.tagName;
 	};
 	
@@ -2571,7 +2572,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		// Iterate up to the unit element (e.g., <p>, <h1>, <h2>, <h3>, <h4>, <h5>, <h6>, <li>) to retrieve its attributes and those of its ancestors.
 		while(el) {
 			//p, h1, h2, h3, h4, h5, h6, li
-			if(Vanillanote.consts.UNIT_TAG.indexOf(el.tagName) >= 0) {
+			if(vn.consts.UNIT_TAG.indexOf(el.tagName) >= 0) {
 				break;
 			}
 			chkElementAttributes(el);
@@ -2602,7 +2603,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		// Iterate up to the unit element (e.g., <p>, <h1>, <h2>, <h3>, <h4>, <h5>, <h6>, <li>) to retrieve its attributes and those of its ancestors.
 		while(el) {
 			//p, h1, h2, h3, h4, h5, h6, li
-			if(Vanillanote.consts.UNIT_TAG.indexOf(el.tagName) >= 0) {
+			if(vn.consts.UNIT_TAG.indexOf(el.tagName) >= 0) {
 				break;
 			}
 			switch(el.tagName) {
@@ -2636,12 +2637,12 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	var getEditElementTag = function(noteIndex: number) {
 		var rtnTagName = "";
 		var tempTagName = "";
-		for(var i = 0; i < Vanillanote.variables.editDragUnitElements[noteIndex].length; i++) {
-			if((Vanillanote.variables.editDragUnitElements as any)[noteIndex][i].tagName === "LI") {
-				tempTagName = (Vanillanote.variables.editDragUnitElements as any)[noteIndex][i].parentNode.tagName;
+		for(var i = 0; i < vn.variables.editDragUnitElements[noteIndex].length; i++) {
+			if((vn.variables.editDragUnitElements as any)[noteIndex][i].tagName === "LI") {
+				tempTagName = (vn.variables.editDragUnitElements as any)[noteIndex][i].parentNode.tagName;
 			}
 			else {
-				tempTagName = (Vanillanote.variables.editDragUnitElements as any)[noteIndex][i].tagName;
+				tempTagName = (vn.variables.editDragUnitElements as any)[noteIndex][i].tagName;
 			}
 			
 			if(rtnTagName && rtnTagName !== tempTagName) {
@@ -2661,8 +2662,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	var getSpecialTag = function(el: any) {
 		var element = el;
 		var tagName = element.tagName;
-		while(element && Vanillanote.consts.UNIT_TAG.indexOf(tagName) < 0) {
-			if(Vanillanote.consts.SPECIAL_TAG.indexOf(tagName) >= 0) return tagName;
+		while(element && vn.consts.UNIT_TAG.indexOf(tagName) < 0) {
+			if(vn.consts.SPECIAL_TAG.indexOf(tagName) >= 0) return tagName;
 			element = element.parentNode;
 			if(!element) break;
 			tagName = element.tagName;
@@ -2686,18 +2687,18 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	    while (previous) {
 	        while (previous.previousSibling) {
 	        	previous = previous.previousSibling;
-	            if (previous.tagName && Vanillanote.consts.DOUBLE_TAG.indexOf(previous.tagName) > 0) {
+	            if (previous.tagName && vn.consts.DOUBLE_TAG.indexOf(previous.tagName) > 0) {
 	            	while(previous.lastChild) {
 	            		previous = previous.lastChild
 	            	}
 	            }
-	            else if (previous.tagName && Vanillanote.consts.UNIT_TAG.indexOf(previous.tagName) > 0) {
+	            else if (previous.tagName && vn.consts.UNIT_TAG.indexOf(previous.tagName) > 0) {
 	            	while(previous.lastChild) {
 	            		previous = previous.lastChild
 	            	}
 	            }
 	            if(previous.nodeType === 3) previous = previous.parentNode;
-	            if (Vanillanote.consts.UNIT_TAG.indexOf(previous.tagName) > 0
+	            if (vn.consts.UNIT_TAG.indexOf(previous.tagName) > 0
 	            	|| !previous.tagName || previous.tagName !== tag.toUpperCase()
 	            	|| !compareObject(attributes, getAttributesObjectFromElement(previous))) {
 	                return previouses;
@@ -2725,18 +2726,18 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	    while (next) {
 	        while (next.nextSibling) {
 	        	next = next.nextSibling;
-	            if (next.tagName && Vanillanote.consts.DOUBLE_TAG.indexOf(next.tagName) > 0) {
+	            if (next.tagName && vn.consts.DOUBLE_TAG.indexOf(next.tagName) > 0) {
 	            	while(next.firstChild) {
 	            		next = next.firstChild
 	            	}
 	            }
-	            else if (next.tagName && Vanillanote.consts.UNIT_TAG.indexOf(next.tagName) > 0) {
+	            else if (next.tagName && vn.consts.UNIT_TAG.indexOf(next.tagName) > 0) {
 	            	while(next.firstChild) {
 	            		next = next.firstChild
 	            	}
 	            }
 	            if(next.nodeType === 3) next = next.parentNode;
-	            if (Vanillanote.consts.UNIT_TAG.indexOf(next.tagName) > 0
+	            if (vn.consts.UNIT_TAG.indexOf(next.tagName) > 0
 	            	|| !next.tagName || next.tagName !== tag.toUpperCase()
 	            	|| !compareObject(attributes, getAttributesObjectFromElement(next))) {
 	                return nexts;
@@ -2757,104 +2758,104 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	var setVariableButtonTogle = function(noteIndex: number, cssObject: Record<string, string>) {
 		//bold
 		if(cssObject["font-weight"] === "bold") {
-			Vanillanote.variables.boldToggles[noteIndex] = true;
+			vn.variables.boldToggles[noteIndex] = true;
 		}
 		else {
-			Vanillanote.variables.boldToggles[noteIndex] = false;
+			vn.variables.boldToggles[noteIndex] = false;
 		}
 		//underline
 		if(cssObject["text-decoration"] === "underline" || cssObject["text-decoration-line"] === "underline") {
-			Vanillanote.variables.underlineToggles[noteIndex] = true;
+			vn.variables.underlineToggles[noteIndex] = true;
 		}
 		else {
-			Vanillanote.variables.underlineToggles[noteIndex] = false;
+			vn.variables.underlineToggles[noteIndex] = false;
 		}
 		//italic
 		if(cssObject["font-style"] === "italic") {
-			Vanillanote.variables.italicToggles[noteIndex] = true;
+			vn.variables.italicToggles[noteIndex] = true;
 		}
 		else {
-			Vanillanote.variables.italicToggles[noteIndex] = false;
+			vn.variables.italicToggles[noteIndex] = false;
 		}
 		//color
 		if(cssObject["color"]) {
-			Vanillanote.variables.colorTextRGBs[noteIndex] = getHexFromRGBA(cssObject["color"])!;
-			Vanillanote.variables.colorTextOpacitys[noteIndex] = getOpacityFromRGBA(cssObject["color"])!;
+			vn.variables.colorTextRGBs[noteIndex] = getHexFromRGBA(cssObject["color"])!;
+			vn.variables.colorTextOpacitys[noteIndex] = getOpacityFromRGBA(cssObject["color"])!;
 			// If color is not in rgba format, use the default color and opacity
-			if(!Vanillanote.variables.colorTextRGBs[noteIndex]) {
-				Vanillanote.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color12[noteIndex]);
-				Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+			if(!vn.variables.colorTextRGBs[noteIndex]) {
+				vn.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color12[noteIndex]);
+				vn.variables.colorTextOpacitys[noteIndex] = "1";
 			}
 			else {
 				// If opacity is not present in rgba format, use 1 as default opacity
-				if(!Vanillanote.variables.colorTextOpacitys[noteIndex]) {
+				if(!vn.variables.colorTextOpacitys[noteIndex]) {
 					if(cssObject["opacity"]) {
-						Vanillanote.variables.colorTextOpacitys[noteIndex] = cssObject["opacity"];
+						vn.variables.colorTextOpacitys[noteIndex] = cssObject["opacity"];
 					}
 					else {
-						Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+						vn.variables.colorTextOpacitys[noteIndex] = "1";
 					}
 				}
 			}
 			
 		}
 		else {
-			Vanillanote.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color12[noteIndex]);
-			Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+			vn.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color12[noteIndex]);
+			vn.variables.colorTextOpacitys[noteIndex] = "1";
 		}
 		//background color
 		if(cssObject["background-color"]) {
-			Vanillanote.variables.colorBackRGBs[noteIndex] = getHexFromRGBA(cssObject["background-color"])!;
-			Vanillanote.variables.colorBackOpacitys[noteIndex] = getOpacityFromRGBA(cssObject["background-color"])!;
+			vn.variables.colorBackRGBs[noteIndex] = getHexFromRGBA(cssObject["background-color"])!;
+			vn.variables.colorBackOpacitys[noteIndex] = getOpacityFromRGBA(cssObject["background-color"])!;
 			// If background-color is not in rgba format, use the default color and opacity
-			if(!Vanillanote.variables.colorTextRGBs[noteIndex]) {
-				Vanillanote.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color12[noteIndex]);
-				Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+			if(!vn.variables.colorTextRGBs[noteIndex]) {
+				vn.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color12[noteIndex]);
+				vn.variables.colorTextOpacitys[noteIndex] = "1";
 			}
 			else {
 				// If opacity is not present in rgba format, use 0 as default opacity
-				if(!Vanillanote.variables.colorBackOpacitys[noteIndex]) {
+				if(!vn.variables.colorBackOpacitys[noteIndex]) {
 					if(cssObject["opacity"]) {
-						Vanillanote.variables.colorBackOpacitys[noteIndex] = cssObject["opacity"];
+						vn.variables.colorBackOpacitys[noteIndex] = cssObject["opacity"];
 					}
 					else {
-						Vanillanote.variables.colorBackOpacitys[noteIndex] = "0";
+						vn.variables.colorBackOpacitys[noteIndex] = "0";
 					}
 				}
 			}
 		}
 		else {
-			Vanillanote.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color13[noteIndex]);
-			Vanillanote.variables.colorBackOpacitys[noteIndex] = "0";
+			vn.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color13[noteIndex]);
+			vn.variables.colorBackOpacitys[noteIndex] = "0";
 		}
 		/* Do not toggle font family and font size, etc.
 		//font family
 		if(cssObject["font-family"]) {
-			Vanillanote.variables.fontFamilies[noteIndex] = cssObject["font-family"];
+			vn.variables.fontFamilies[noteIndex] = cssObject["font-family"];
 		}
 		else {
-			Vanillanote.variables.fontFamilies[noteIndex] = Vanillanote.variables.defaultStyles[noteIndex]["font-family"];
+			vn.variables.fontFamilies[noteIndex] = vn.variables.defaultStyles[noteIndex]["font-family"];
 		}
 		//font size
 		if(cssObject["font-size"]) {
-			Vanillanote.variables.fontSizes[noteIndex] = extractNumber(cssObject["font-size"]);
+			vn.variables.fontSizes[noteIndex] = extractNumber(cssObject["font-size"]);
 		}
 		else {
-			Vanillanote.variables.fontSizes[noteIndex] = extractNumber(Vanillanote.variables.defaultStyles[noteIndex]["font-size"]);
+			vn.variables.fontSizes[noteIndex] = extractNumber(vn.variables.defaultStyles[noteIndex]["font-size"]);
 		}
 		//letter spacing
 		if(cssObject["letter-spacing"]) {
-			Vanillanote.variables.letterSpacings[noteIndex] = extractNumber(cssObject["letter-spacing"]);
+			vn.variables.letterSpacings[noteIndex] = extractNumber(cssObject["letter-spacing"]);
 		}
 		else {
-			Vanillanote.variables.letterSpacings[noteIndex] = 0;
+			vn.variables.letterSpacings[noteIndex] = 0;
 		}
 		//line height
 		if(cssObject["line-height"]) {
-			Vanillanote.variables.lineHeights[noteIndex] = extractNumber(cssObject["line-height"]);
+			vn.variables.lineHeights[noteIndex] = extractNumber(cssObject["line-height"]);
 		}
 		else {
-			Vanillanote.variables.lineHeights[noteIndex] = extractNumber(Vanillanote.variables.defaultStyles[noteIndex]["line-height"]);
+			vn.variables.lineHeights[noteIndex] = extractNumber(vn.variables.defaultStyles[noteIndex]["line-height"]);
 		}
 		*/
 	};
@@ -2867,17 +2868,17 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var setTagToggle = function(noteIndex: number, tag: string) {
 		if(tag === "UL") {
-			Vanillanote.variables.ulToggles[noteIndex] = true;
+			vn.variables.ulToggles[noteIndex] = true;
 		}
 		else {
-			Vanillanote.variables.ulToggles[noteIndex] = false;
+			vn.variables.ulToggles[noteIndex] = false;
 		}
 		
 		if(tag === "OL") {
-			Vanillanote.variables.olToggles[noteIndex] = true;
+			vn.variables.olToggles[noteIndex] = true;
 		}
 		else {
-			Vanillanote.variables.olToggles[noteIndex] = false;
+			vn.variables.olToggles[noteIndex] = false;
 		}
 	};
 	
@@ -2910,24 +2911,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var allButtonToggle = function(noteIndex: number) {
 		//format
-		button_onToggle(Vanillanote.elements.boldButtons[noteIndex], Vanillanote.variables.boldToggles[noteIndex]);
-		button_onToggle(Vanillanote.elements.underlineButtons[noteIndex], Vanillanote.variables.underlineToggles[noteIndex]);
-		button_onToggle(Vanillanote.elements.italicButtons[noteIndex], Vanillanote.variables.italicToggles[noteIndex]);
-		button_onToggle(Vanillanote.elements.ulButtons[noteIndex], Vanillanote.variables.ulToggles[noteIndex]);
-		button_onToggle(Vanillanote.elements.olButtons[noteIndex], Vanillanote.variables.olToggles[noteIndex]);
+		button_onToggle(vn.elements.boldButtons[noteIndex], vn.variables.boldToggles[noteIndex]);
+		button_onToggle(vn.elements.underlineButtons[noteIndex], vn.variables.underlineToggles[noteIndex]);
+		button_onToggle(vn.elements.italicButtons[noteIndex], vn.variables.italicToggles[noteIndex]);
+		button_onToggle(vn.elements.ulButtons[noteIndex], vn.variables.ulToggles[noteIndex]);
+		button_onToggle(vn.elements.olButtons[noteIndex], vn.variables.olToggles[noteIndex]);
 		//color
-		(Vanillanote.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-		= getRGBAFromHex(Vanillanote.variables.colorTextRGBs[noteIndex], Vanillanote.variables.colorTextOpacitys[noteIndex] === "0" ? "1" : Vanillanote.variables.colorTextOpacitys[noteIndex]);
-		(Vanillanote.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-		 = getRGBAFromHex(Vanillanote.variables.colorBackRGBs[noteIndex], Vanillanote.variables.colorBackOpacitys[noteIndex] === "0" ? "1" : Vanillanote.variables.colorBackOpacitys[noteIndex]);
+		(vn.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+		= getRGBAFromHex(vn.variables.colorTextRGBs[noteIndex], vn.variables.colorTextOpacitys[noteIndex] === "0" ? "1" : vn.variables.colorTextOpacitys[noteIndex]);
+		(vn.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+		 = getRGBAFromHex(vn.variables.colorBackRGBs[noteIndex], vn.variables.colorBackOpacitys[noteIndex] === "0" ? "1" : vn.variables.colorBackOpacitys[noteIndex]);
 		/*Do not toggle font family and font size, etc.
 		//font family
-		Vanillanote.elements.fontFamilySelects[noteIndex].firstChild.textContent = Vanillanote.variables.fontFamilies[noteIndex].length > 12 ? Vanillanote.variables.fontFamilies[noteIndex].substr(0,12) + "..." : Vanillanote.variables.fontFamilies[noteIndex];
-		Vanillanote.elements.fontFamilySelects[noteIndex].style.fontFamily = Vanillanote.variables.fontFamilies[noteIndex];
+		vn.elements.fontFamilySelects[noteIndex].firstChild.textContent = vn.variables.fontFamilies[noteIndex].length > 12 ? vn.variables.fontFamilies[noteIndex].substr(0,12) + "..." : vn.variables.fontFamilies[noteIndex];
+		vn.elements.fontFamilySelects[noteIndex].style.fontFamily = vn.variables.fontFamilies[noteIndex];
 		//size
-		Vanillanote.elements.fontSizeInputs[noteIndex].value = Vanillanote.variables.fontSizes[noteIndex];
-		Vanillanote.elements.letterSpacingInputs[noteIndex].value = Vanillanote.variables.letterSpacings[noteIndex];
-		Vanillanote.elements.lineHeightInputs[noteIndex].value = Vanillanote.variables.lineHeights[noteIndex];
+		vn.elements.fontSizeInputs[noteIndex].value = vn.variables.fontSizes[noteIndex];
+		vn.elements.letterSpacingInputs[noteIndex].value = vn.variables.letterSpacings[noteIndex];
+		vn.elements.lineHeightInputs[noteIndex].value = vn.variables.lineHeights[noteIndex];
 		*/
 	};
 	
@@ -2937,28 +2938,28 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note editor where the toggle buttons will be initialized.
 	*/
 	var initToggleButtonVariables = function(noteIndex: number) {
-		Vanillanote.variables.boldToggles[noteIndex] = false;
-		Vanillanote.variables.underlineToggles[noteIndex] = false;
-		Vanillanote.variables.italicToggles[noteIndex] = false;
-		Vanillanote.variables.ulToggles[noteIndex] = false;
-		Vanillanote.variables.olToggles[noteIndex] = false;
+		vn.variables.boldToggles[noteIndex] = false;
+		vn.variables.underlineToggles[noteIndex] = false;
+		vn.variables.italicToggles[noteIndex] = false;
+		vn.variables.ulToggles[noteIndex] = false;
+		vn.variables.olToggles[noteIndex] = false;
 		//format
-		button_onToggle(Vanillanote.elements.boldButtons[noteIndex], Vanillanote.variables.boldToggles[noteIndex]);
-		button_onToggle(Vanillanote.elements.underlineButtons[noteIndex], Vanillanote.variables.underlineToggles[noteIndex]);
-		button_onToggle(Vanillanote.elements.italicButtons[noteIndex], Vanillanote.variables.italicToggles[noteIndex]);
-		button_onToggle(Vanillanote.elements.ulButtons[noteIndex], Vanillanote.variables.ulToggles[noteIndex]);
-		button_onToggle(Vanillanote.elements.olButtons[noteIndex], Vanillanote.variables.olToggles[noteIndex]);
+		button_onToggle(vn.elements.boldButtons[noteIndex], vn.variables.boldToggles[noteIndex]);
+		button_onToggle(vn.elements.underlineButtons[noteIndex], vn.variables.underlineToggles[noteIndex]);
+		button_onToggle(vn.elements.italicButtons[noteIndex], vn.variables.italicToggles[noteIndex]);
+		button_onToggle(vn.elements.ulButtons[noteIndex], vn.variables.ulToggles[noteIndex]);
+		button_onToggle(vn.elements.olButtons[noteIndex], vn.variables.olToggles[noteIndex]);
 		/*Do not toggle color, font family and font size, etc.
 		//color
-		Vanillanote.elements.colorTextSelects[noteIndex].querySelector("."+getEventChildrenClassName()).style.color = Vanillanote.colors.color12[noteIndex];
-		Vanillanote.elements.colorBackSelects[noteIndex].querySelector("."+getEventChildrenClassName()).style.color = Vanillanote.colors.color13[noteIndex];
+		vn.elements.colorTextSelects[noteIndex].querySelector("."+getEventChildrenClassName()).style.color = vn.colors.color12[noteIndex];
+		vn.elements.colorBackSelects[noteIndex].querySelector("."+getEventChildrenClassName()).style.color = vn.colors.color13[noteIndex];
 		//font family
-		Vanillanote.elements.fontFamilySelects[noteIndex].firstChild.textContent = Vanillanote.variables.defaultStyles[noteIndex]["font-family"].length > 12 ? Vanillanote.variables.defaultStyles[noteIndex]["font-family"].substr(0,12) + "..." : Vanillanote.variables.defaultStyles[noteIndex]["font-family"];
-		Vanillanote.elements.fontFamilySelects[noteIndex].style.fontFamily = Vanillanote.variables.defaultStyles[noteIndex]["font-family"];
+		vn.elements.fontFamilySelects[noteIndex].firstChild.textContent = vn.variables.defaultStyles[noteIndex]["font-family"].length > 12 ? vn.variables.defaultStyles[noteIndex]["font-family"].substr(0,12) + "..." : vn.variables.defaultStyles[noteIndex]["font-family"];
+		vn.elements.fontFamilySelects[noteIndex].style.fontFamily = vn.variables.defaultStyles[noteIndex]["font-family"];
 		//size
-		Vanillanote.elements.fontSizeInputs[noteIndex].value = Vanillanote.variables.defaultStyles[noteIndex]["font-size"];
-		Vanillanote.elements.letterSpacingInputs[noteIndex].value = Vanillanote.variables.defaultStyles[noteIndex]["letter-spacing"];
-		Vanillanote.elements.lineHeightInputs[noteIndex].value = Vanillanote.variables.defaultStyles[noteIndex]["line-height"];
+		vn.elements.fontSizeInputs[noteIndex].value = vn.variables.defaultStyles[noteIndex]["font-size"];
+		vn.elements.letterSpacingInputs[noteIndex].value = vn.variables.defaultStyles[noteIndex]["letter-spacing"];
+		vn.elements.lineHeightInputs[noteIndex].value = vn.variables.defaultStyles[noteIndex]["line-height"];
 		*/
 	};
 	
@@ -2985,21 +2986,21 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var selectBox: any;
 		
 		if(selectId.includes("paragraphStyleSelect")) {
-			selectBox = Vanillanote.elements.paragraphStyleSelectBoxes[noteIndex];
+			selectBox = vn.elements.paragraphStyleSelectBoxes[noteIndex];
 		}
 		else if(selectId.includes("textAlignSelect")) {
-			selectBox = Vanillanote.elements.textAlignSelectBoxes[noteIndex];
+			selectBox = vn.elements.textAlignSelectBoxes[noteIndex];
 		}
 		else if(selectId.includes("fontFamilySelect")) {
-			selectBox = Vanillanote.elements.fontFamilySelectBoxes[noteIndex];
+			selectBox = vn.elements.fontFamilySelectBoxes[noteIndex];
 		}
 		else if(selectId.includes("colorTextSelect")) {
 			if(isClickBox) return; // Checks if the select box is currently visible
-			selectBox = Vanillanote.elements.colorTextSelectBoxes[noteIndex];
+			selectBox = vn.elements.colorTextSelectBoxes[noteIndex];
 		}
 		else if(selectId.includes("colorBackSelect")) {
 			if(isClickBox) return; // Checks if the select box is currently visible
-			selectBox = Vanillanote.elements.colorBackSelectBoxes[noteIndex];
+			selectBox = vn.elements.colorBackSelectBoxes[noteIndex];
 		}
 		
 		var displayBlock = getId(noteIndex, "on_display_block");
@@ -3027,8 +3028,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var selectBoxRect = selectBox.getBoundingClientRect();
 			if(selectBoxRect.top === 0) return
 			
-			if(Vanillanote.elements.tools[noteIndex].offsetParent === null) return;
-			var toolRect = Vanillanote.elements.tools[noteIndex].getBoundingClientRect();
+			if(vn.elements.tools[noteIndex].offsetParent === null) return;
+			var toolRect = vn.elements.tools[noteIndex].getBoundingClientRect();
 			
 			if(toolRect.left > selectBoxRect.left) {
 				selectBox.style.right = selectBoxRect.left - 1 + "px";
@@ -3043,8 +3044,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var selectBoxRect = selectBox.getBoundingClientRect();
 			if(selectBoxRect.top === 0) return
 			
-			if(Vanillanote.elements.tools[noteIndex].offsetParent === null) return;
-			var toolRect = Vanillanote.elements.tools[noteIndex].getBoundingClientRect();
+			if(vn.elements.tools[noteIndex].offsetParent === null) return;
+			var toolRect = vn.elements.tools[noteIndex].getBoundingClientRect();
 			
 			if(toolRect.right < selectBoxRect.right) {
 				selectBox.style.left = toolRect.right - (selectBoxRect.right + 1) + "px";
@@ -3061,16 +3062,16 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var displayBlock = getId(noteIndex, "on_display_block");
 		var displayNone = getId(noteIndex, "on_display_none");
 		
-		Vanillanote.elements.paragraphStyleSelectBoxes[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.paragraphStyleSelectBoxes[noteIndex].classList.add(displayNone);
-		Vanillanote.elements.textAlignSelectBoxes[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.textAlignSelectBoxes[noteIndex].classList.add(displayNone);
-		Vanillanote.elements.fontFamilySelectBoxes[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.fontFamilySelectBoxes[noteIndex].classList.add(displayNone);
-		Vanillanote.elements.colorTextSelectBoxes[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.colorTextSelectBoxes[noteIndex].classList.add(displayNone);
-		Vanillanote.elements.colorBackSelectBoxes[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.colorBackSelectBoxes[noteIndex].classList.add(displayNone);
+		vn.elements.paragraphStyleSelectBoxes[noteIndex].classList.remove(displayBlock);
+		vn.elements.paragraphStyleSelectBoxes[noteIndex].classList.add(displayNone);
+		vn.elements.textAlignSelectBoxes[noteIndex].classList.remove(displayBlock);
+		vn.elements.textAlignSelectBoxes[noteIndex].classList.add(displayNone);
+		vn.elements.fontFamilySelectBoxes[noteIndex].classList.remove(displayBlock);
+		vn.elements.fontFamilySelectBoxes[noteIndex].classList.add(displayNone);
+		vn.elements.colorTextSelectBoxes[noteIndex].classList.remove(displayBlock);
+		vn.elements.colorTextSelectBoxes[noteIndex].classList.add(displayNone);
+		vn.elements.colorBackSelectBoxes[noteIndex].classList.remove(displayBlock);
+		vn.elements.colorBackSelectBoxes[noteIndex].classList.add(displayNone);
 	};
 	
 	/**
@@ -3083,12 +3084,12 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var selectLsit = e.target;
 		var noteIndex = selectLsit.getAttribute("data-note-index");
 		var fontFamily = selectLsit.getAttribute("data-font-family");
-		var oldStyleObject: any = getObjectFromCssText((Vanillanote.elements.fontFamilySelects[noteIndex] as any).getAttribute("style"));
+		var oldStyleObject: any = getObjectFromCssText((vn.elements.fontFamilySelects[noteIndex] as any).getAttribute("style"));
 		oldStyleObject["font-family"] = fontFamily;
 		// Change the font family in the variables and the displayed select list option.
-		Vanillanote.variables.fontFamilies[noteIndex] = fontFamily;
-		(Vanillanote.elements.fontFamilySelects[noteIndex] as any).firstChild.textContent = fontFamily.length > 12 ? fontFamily.substr(0,12) + "..." : fontFamily;
-		(Vanillanote.elements.fontFamilySelects[noteIndex] as any).style.fontFamily = fontFamily;
+		vn.variables.fontFamilies[noteIndex] = fontFamily;
+		(vn.elements.fontFamilySelects[noteIndex] as any).firstChild.textContent = fontFamily.length > 12 ? fontFamily.substr(0,12) + "..." : fontFamily;
+		(vn.elements.fontFamilySelects[noteIndex] as any).style.fontFamily = fontFamily;
 	};
 	
 	/**
@@ -3100,33 +3101,33 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	var getObjectNoteCss = function(noteIndex: number) {
 		var cssObject: any = new Object();
 		
-		if(Vanillanote.variables.boldToggles[noteIndex]) {
+		if(vn.variables.boldToggles[noteIndex]) {
 			cssObject["font-weight"] = "bold";
 		}
-		if(Vanillanote.variables.underlineToggles[noteIndex]){
+		if(vn.variables.underlineToggles[noteIndex]){
 			cssObject["text-decoration"] = "underline";
 		}
-		if(Vanillanote.variables.italicToggles[noteIndex]){
+		if(vn.variables.italicToggles[noteIndex]){
 			cssObject["font-style"] = "italic";
 		}
-		cssObject["font-size"] = Vanillanote.variables.fontSizes[noteIndex] + "px";
-		cssObject["line-height"] = Vanillanote.variables.lineHeights[noteIndex] + "px";
+		cssObject["font-size"] = vn.variables.fontSizes[noteIndex] + "px";
+		cssObject["line-height"] = vn.variables.lineHeights[noteIndex] + "px";
 		// Add letter-spacing to the style object only if it's not 0
-		if(Vanillanote.variables.letterSpacings[noteIndex] !== "0"){
-			cssObject["letter-spacing"] = Vanillanote.variables.letterSpacings[noteIndex] + "px";
+		if(vn.variables.letterSpacings[noteIndex] !== "0"){
+			cssObject["letter-spacing"] = vn.variables.letterSpacings[noteIndex] + "px";
 		}
-		if(Vanillanote.variables.fontFamilies[noteIndex]){
-			cssObject["font-family"] = Vanillanote.variables.fontFamilies[noteIndex];
+		if(vn.variables.fontFamilies[noteIndex]){
+			cssObject["font-family"] = vn.variables.fontFamilies[noteIndex];
 		}
 		// Add text color to the style object if it's different from the default color and opacity
-		if(getHexColorFromColorName(Vanillanote.colors.color12[noteIndex]) !== Vanillanote.variables.colorTextRGBs[noteIndex]
-			|| Vanillanote.variables.colorTextOpacitys[noteIndex] !== "1") {
-			cssObject["color"] = getRGBAFromHex(Vanillanote.variables.colorTextRGBs[noteIndex], Vanillanote.variables.colorTextOpacitys[noteIndex]);
+		if(getHexColorFromColorName(vn.colors.color12[noteIndex]) !== vn.variables.colorTextRGBs[noteIndex]
+			|| vn.variables.colorTextOpacitys[noteIndex] !== "1") {
+			cssObject["color"] = getRGBAFromHex(vn.variables.colorTextRGBs[noteIndex], vn.variables.colorTextOpacitys[noteIndex]);
 		}
 		// Add background color to the style object if it's different from the default color and opacity
-		if(getHexColorFromColorName(Vanillanote.colors.color13[noteIndex]) !== Vanillanote.variables.colorBackRGBs[noteIndex]
-			|| Vanillanote.variables.colorBackOpacitys[noteIndex] !== "0") {
-			cssObject["background-color"] = getRGBAFromHex(Vanillanote.variables.colorBackRGBs[noteIndex], Vanillanote.variables.colorBackOpacitys[noteIndex]);
+		if(getHexColorFromColorName(vn.colors.color13[noteIndex]) !== vn.variables.colorBackRGBs[noteIndex]
+			|| vn.variables.colorBackOpacitys[noteIndex] !== "0") {
+			cssObject["background-color"] = getRGBAFromHex(vn.variables.colorBackRGBs[noteIndex], vn.variables.colorBackOpacitys[noteIndex]);
 		}
 		
 		return cssObject;
@@ -3138,38 +3139,38 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {Number} noteIndex - The index of the note.
 	*/
 	var setEditStyleTag = function(noteIndex: number) {
-		if(Vanillanote.variables.setEditStyleTagToggle > 0) {
-			Vanillanote.variables.setEditStyleTagToggle--;
+		if(vn.variables.setEditStyleTagToggle > 0) {
+			vn.variables.setEditStyleTagToggle--;
 			return;
 		}
-		var tempEl: any = Vanillanote.variables.editStartUnitElements[noteIndex];
+		var tempEl: any = vn.variables.editStartUnitElements[noteIndex];
 		var textarea = tempEl;
 		while(tempEl) {
-			if(tempEl.tagName === (Vanillanote.variables.noteName+"-textarea").toUpperCase()) {
+			if(tempEl.tagName === (vn.variables.noteName+"-textarea").toUpperCase()) {
 				textarea = tempEl;
 				break;
 			}
 			tempEl = tempEl.parentNode;
 		}
 		if(!textarea) {
-			for(var i = 0; i < Vanillanote.elements.notes.length; i++) {
+			for(var i = 0; i < vn.elements.notes.length; i++) {
 				initToggleButtonVariables(i);
 			}
 			return;
 		}
 		
 		// Get styles of the selected element
-		var cssObjectEl = getObjectEditElementCss(Vanillanote.variables.editStartElements[noteIndex]);
+		var cssObjectEl = getObjectEditElementCss(vn.variables.editStartElements[noteIndex]);
 		// If multiple elements are selected, check if all tags have the same styles
 	    // If not, clear the cssObjectEl
-		if(Vanillanote.variables.editStartNodes[noteIndex] !== Vanillanote.variables.editEndNodes[noteIndex]) {
+		if(vn.variables.editStartNodes[noteIndex] !== vn.variables.editEndNodes[noteIndex]) {
 			var tempCssObjectEl = cssObjectEl;
 			var isCheck = false;
 			var isEnd = false;
 			var getCheckAllStyle = function(element: any) {
 				for(var i = 0; i < element.childNodes.length; i++) {
 					if(isEnd) break;
-					if(Vanillanote.variables.editStartNodes[noteIndex] === element.childNodes[i]) {
+					if(vn.variables.editStartNodes[noteIndex] === element.childNodes[i]) {
 						isCheck = true;
 					}
 					if(isCheck && element.childNodes[i].nodeType === 3 && element.childNodes[i].textContent) {
@@ -3179,7 +3180,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 						cssObjectEl = {};
 						isEnd = true;
 					}
-					if(Vanillanote.variables.editEndNodes[noteIndex] === element.childNodes[i]) {
+					if(vn.variables.editEndNodes[noteIndex] === element.childNodes[i]) {
 						isEnd = true;
 					}
 					if(element.childNodes[i].childNodes) {
@@ -3187,8 +3188,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 					}
 				}
 			};
-			for(var i = 0; i < Vanillanote.variables.editDragUnitElements[noteIndex].length; i++) {
-				getCheckAllStyle(Vanillanote.variables.editDragUnitElements[noteIndex][i]);
+			for(var i = 0; i < vn.variables.editDragUnitElements[noteIndex].length; i++) {
+				getCheckAllStyle(vn.variables.editDragUnitElements[noteIndex][i]);
 			}
 		}
 		// Change the note's style variables
@@ -3229,7 +3230,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var isTextarea = false;
 		
 		while(textarea) {
-			if(textarea.tagName === (Vanillanote.variables.noteName+"-textarea").toUpperCase()) {
+			if(textarea.tagName === (vn.variables.noteName+"-textarea").toUpperCase()) {
 				isTextarea = true;
 				break;
 			}
@@ -3279,15 +3280,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {Element} element - The element containing the <ul> or <ol> tag.
 	*/
 	var removeDoubleTag = function(noteIndex: number, element: any) {
-		if(Vanillanote.consts.DOUBLE_TAG.indexOf(element.tagName) < 0) return;
+		if(vn.consts.DOUBLE_TAG.indexOf(element.tagName) < 0) return;
 		var tempEl;
 		var childNodes = element.childNodes;
 		for(var i = 0; i < childNodes.length; i++) {
 			tempEl = getElementReplaceTag(childNodes[i], "P");
 			element.insertAdjacentElement("beforebegin", tempEl);
-			for(var j = 0; j < Vanillanote.variables.editDragUnitElements[noteIndex].length; j++) {
-				if(Vanillanote.variables.editDragUnitElements[noteIndex][j] === childNodes[i]) {
-					Vanillanote.variables.editDragUnitElements[noteIndex][j] = tempEl;
+			for(var j = 0; j < vn.variables.editDragUnitElements[noteIndex].length; j++) {
+				if(vn.variables.editDragUnitElements[noteIndex][j] === childNodes[i]) {
+					vn.variables.editDragUnitElements[noteIndex][j] = tempEl;
 					break;
 				}
 			}
@@ -3306,7 +3307,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var getElement = function(text: string, tagName: string, cssText: string, attributes: Record<string, string>) {
 		text = text.replace(/<br\s*\/?>/gm, "\n");
-		if(!tagName || Vanillanote.consts.UNIT_TAG.indexOf(tagName) >= 0 || Vanillanote.consts.AUTO_MODIFY_TAG.indexOf(tagName) >= 0) {
+		if(!tagName || vn.consts.UNIT_TAG.indexOf(tagName) >= 0 || vn.consts.AUTO_MODIFY_TAG.indexOf(tagName) >= 0) {
 			tagName = "span"
 		}
 		var tempEl = document.createElement(tagName);
@@ -3331,28 +3332,28 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var setEditNodeAndElement = function(noteIndex: number, setElement: any, compareElement: any) {
 		var isChange = false;
-		if(Vanillanote.variables.editStartNodes[noteIndex] === compareElement) {
-			Vanillanote.variables.editStartNodes[noteIndex] = setElement;
+		if(vn.variables.editStartNodes[noteIndex] === compareElement) {
+			vn.variables.editStartNodes[noteIndex] = setElement;
 			isChange = true;
 		}
-		if(Vanillanote.variables.editEndNodes[noteIndex] === compareElement) {
-			Vanillanote.variables.editEndNodes[noteIndex] = setElement;
+		if(vn.variables.editEndNodes[noteIndex] === compareElement) {
+			vn.variables.editEndNodes[noteIndex] = setElement;
 			isChange = true;
 		}
-		if(Vanillanote.variables.editStartElements[noteIndex] === compareElement) {
-			Vanillanote.variables.editStartElements[noteIndex] = setElement;
+		if(vn.variables.editStartElements[noteIndex] === compareElement) {
+			vn.variables.editStartElements[noteIndex] = setElement;
 			isChange = true;
 		}
-		if(Vanillanote.variables.editEndElements[noteIndex] === compareElement) {
-			Vanillanote.variables.editEndElements[noteIndex] = setElement;
+		if(vn.variables.editEndElements[noteIndex] === compareElement) {
+			vn.variables.editEndElements[noteIndex] = setElement;
 			isChange = true;
 		}
-		if(Vanillanote.variables.editStartUnitElements[noteIndex] === compareElement) {
-			Vanillanote.variables.editStartUnitElements[noteIndex] = setElement;
+		if(vn.variables.editStartUnitElements[noteIndex] === compareElement) {
+			vn.variables.editStartUnitElements[noteIndex] = setElement;
 			isChange = true;
 		}
-		if(Vanillanote.variables.editEndUnitElements[noteIndex] === compareElement) {
-			Vanillanote.variables.editEndUnitElements[noteIndex] = setElement;
+		if(vn.variables.editEndUnitElements[noteIndex] === compareElement) {
+			vn.variables.editEndUnitElements[noteIndex] = setElement;
 			isChange = true;
 		}
 		return isChange;
@@ -3366,11 +3367,11 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var modifySeletedElements = function(noteIndex: number) {
 		var isEnd = false;
-		var element = Vanillanote.variables.editStartNodes[noteIndex];
+		var element = vn.variables.editStartNodes[noteIndex];
 		var selectedNodes: any[] = [];
-		if(!Vanillanote.variables.editStartUnitElements[noteIndex] || !Vanillanote.variables.editEndUnitElements[noteIndex]) return selectedNodes;
+		if(!vn.variables.editStartUnitElements[noteIndex] || !vn.variables.editEndUnitElements[noteIndex]) return selectedNodes;
 		
-		var lastNode = Vanillanote.variables.editEndUnitElements[noteIndex].lastChild;
+		var lastNode = vn.variables.editEndUnitElements[noteIndex].lastChild;
 		while(lastNode) {
 			if(!lastNode.lastChild) break;
 			lastNode = lastNode.lastChild;
@@ -3383,8 +3384,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				isEnd = true;
 			}
 			if(isEnd) return;
-			if(Vanillanote.consts.UNIT_TAG.indexOf(node.tagName) >= 0
-				|| Vanillanote.consts.EMPTY_ABLE_TAG.indexOf(node.tagName) >= 0
+			if(vn.consts.UNIT_TAG.indexOf(node.tagName) >= 0
+				|| vn.consts.EMPTY_ABLE_TAG.indexOf(node.tagName) >= 0
 				|| node.nodeType === 3) {
 				selectedNodes.push(node);
 			}
@@ -3424,59 +3425,59 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var tag = target.getAttribute("data-tag-name")
 		var tempEl;
 		
-		if(Vanillanote.consts.DOUBLE_TAG.indexOf(tag) >= 0) { // ul or ol
+		if(vn.consts.DOUBLE_TAG.indexOf(tag) >= 0) { // ul or ol
 			var tempDoubleElement = document.createElement(tag);
-			for(var i = 0; i < Vanillanote.variables.editDragUnitElements[noteIndex].length; i++) {
-				if((Vanillanote.variables.editDragUnitElements[noteIndex] as any)[i].tagName === "LI") {
+			for(var i = 0; i < vn.variables.editDragUnitElements[noteIndex].length; i++) {
+				if((vn.variables.editDragUnitElements[noteIndex] as any)[i].tagName === "LI") {
 					// Remove ul or ol tag
-					removeDoubleTag(noteIndex, (Vanillanote.variables.editDragUnitElements[noteIndex] as any)[i].parentNode);
+					removeDoubleTag(noteIndex, (vn.variables.editDragUnitElements[noteIndex] as any)[i].parentNode);
 				}
-				if(tag === "UL" && Vanillanote.variables.ulToggles[noteIndex]) {
+				if(tag === "UL" && vn.variables.ulToggles[noteIndex]) {
 					break;
 				}
-				if(tag === "OL" && Vanillanote.variables.olToggles[noteIndex]) {
+				if(tag === "OL" && vn.variables.olToggles[noteIndex]) {
 					break;
 				}
 				// Recreate ul or ol tag
 				if(i === 0) {
-					(Vanillanote.variables.editDragUnitElements[noteIndex] as any)[0].insertAdjacentElement("beforebegin", tempDoubleElement);
+					(vn.variables.editDragUnitElements[noteIndex] as any)[0].insertAdjacentElement("beforebegin", tempDoubleElement);
 				}
-				tempEl = getElementReplaceTag(Vanillanote.variables.editDragUnitElements[noteIndex][i], "LI");
+				tempEl = getElementReplaceTag(vn.variables.editDragUnitElements[noteIndex][i], "LI");
 				// Prevents the edit Node from being replaced with a unit tag when there's an empty edit unit tag (p, h1, h2, li, etc.).
-				setEditNodeAndElement(noteIndex, tempEl, Vanillanote.variables.editDragUnitElements[noteIndex][i]);
+				setEditNodeAndElement(noteIndex, tempEl, vn.variables.editDragUnitElements[noteIndex][i]);
 				
-				(Vanillanote.variables.editDragUnitElements[noteIndex] as any)[i].remove();
-				Vanillanote.variables.editDragUnitElements[noteIndex][i] = tempEl;
+				(vn.variables.editDragUnitElements[noteIndex] as any)[i].remove();
+				vn.variables.editDragUnitElements[noteIndex][i] = tempEl;
 				tempDoubleElement.append(tempEl);
 			}
 		} else {
-			for(var i = 0; i < Vanillanote.variables.editDragUnitElements[noteIndex].length; i++) {
-				if((Vanillanote.variables.editDragUnitElements[noteIndex] as any)[i].tagName === "LI") {
+			for(var i = 0; i < vn.variables.editDragUnitElements[noteIndex].length; i++) {
+				if((vn.variables.editDragUnitElements[noteIndex] as any)[i].tagName === "LI") {
 					// Remove ul or ol tag
-					removeDoubleTag(noteIndex, (Vanillanote.variables.editDragUnitElements[noteIndex] as any)[i].parentNode);
+					removeDoubleTag(noteIndex, (vn.variables.editDragUnitElements[noteIndex] as any)[i].parentNode);
 				}
 				// Create new tag
-				tempEl = getElementReplaceTag(Vanillanote.variables.editDragUnitElements[noteIndex][i], tag);
+				tempEl = getElementReplaceTag(vn.variables.editDragUnitElements[noteIndex][i], tag);
 				
 				// Prevents the edit Node from being replaced with a unit tag when there's an empty edit unit tag (p, h1, h2, li, etc.).
-				setEditNodeAndElement(noteIndex, tempEl, Vanillanote.variables.editDragUnitElements[noteIndex][i]);
+				setEditNodeAndElement(noteIndex, tempEl, vn.variables.editDragUnitElements[noteIndex][i]);
 				
-				(Vanillanote.variables.editDragUnitElements[noteIndex] as any)[i].replaceWith(tempEl);
-				Vanillanote.variables.editDragUnitElements[noteIndex][i] = tempEl;
+				(vn.variables.editDragUnitElements[noteIndex] as any)[i].replaceWith(tempEl);
+				vn.variables.editDragUnitElements[noteIndex][i] = tempEl;
 			}
 		}
 		
 		// Sets the new selection range.
 		var newStartOffset = 0
-		var newEndOffset = Vanillanote.variables.editEndElements[noteIndex] ? (Vanillanote.variables.editEndElements[noteIndex] as any).textContent.length : 0
-		if(Vanillanote.variables.editStartElements[noteIndex] === Vanillanote.variables.editEndElements[noteIndex]) {
+		var newEndOffset = vn.variables.editEndElements[noteIndex] ? (vn.variables.editEndElements[noteIndex] as any).textContent.length : 0
+		if(vn.variables.editStartElements[noteIndex] === vn.variables.editEndElements[noteIndex]) {
 			newStartOffset = newEndOffset;
 		}
 		// Sets the new selection range.
 		setNewSelection(
-				Vanillanote.variables.editStartNodes[noteIndex]!,
+				vn.variables.editStartNodes[noteIndex]!,
 				newStartOffset,
-				Vanillanote.variables.editEndNodes[noteIndex]!,
+				vn.variables.editEndNodes[noteIndex]!,
 				newEndOffset
 				);
 	};
@@ -3498,8 +3499,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var nowCssObject;
 		var tempEl
 		
-		for(var i = 0; i < Vanillanote.variables.editDragUnitElements[noteIndex].length; i++) {
-			nowCssText = (Vanillanote.variables.editDragUnitElements[noteIndex] as any)[i].getAttribute("style");
+		for(var i = 0; i < vn.variables.editDragUnitElements[noteIndex].length; i++) {
+			nowCssText = (vn.variables.editDragUnitElements[noteIndex] as any)[i].getAttribute("style");
 			// Convert style text to an object
 			nowCssObject = getObjectFromCssText(nowCssText);
 			
@@ -3507,20 +3508,20 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			newCssText = getCssTextFromObject(mergeObjects(nowCssObject, tagCssObject));
 			
 			// Perform mutation to trigger the changes by removing and recreating the element
-			tempEl = (Vanillanote.variables.editDragUnitElements[noteIndex] as any)[i].cloneNode(true);
+			tempEl = (vn.variables.editDragUnitElements[noteIndex] as any)[i].cloneNode(true);
 			tempEl.setAttribute("style",newCssText);
-			(Vanillanote.variables.editDragUnitElements[noteIndex] as any)[i].parentNode.replaceChild(tempEl, (Vanillanote.variables.editDragUnitElements[noteIndex] as any)[i]);
-			Vanillanote.variables.editDragUnitElements[noteIndex][i] = tempEl;
+			(vn.variables.editDragUnitElements[noteIndex] as any)[i].parentNode.replaceChild(tempEl, (vn.variables.editDragUnitElements[noteIndex] as any)[i]);
+			vn.variables.editDragUnitElements[noteIndex][i] = tempEl;
 		}
 		
 		// Sets the new selection range.
 		var newStartOffset = 0
-		var newEndOffset = (Vanillanote.variables.editEndElements[noteIndex] as any).childNodes ? (Vanillanote.variables.editEndElements[noteIndex] as any).childNodes.length : 0
+		var newEndOffset = (vn.variables.editEndElements[noteIndex] as any).childNodes ? (vn.variables.editEndElements[noteIndex] as any).childNodes.length : 0
 		// Sets the new selection range.
 		setNewSelection(
-				(Vanillanote.variables.editDragUnitElements[noteIndex] as any)[0],
+				(vn.variables.editDragUnitElements[noteIndex] as any)[0],
 				0,
-				(Vanillanote.variables.editDragUnitElements[noteIndex] as any)[Vanillanote.variables.editDragUnitElements[noteIndex].length - 1],
+				(vn.variables.editDragUnitElements[noteIndex] as any)[vn.variables.editDragUnitElements[noteIndex].length - 1],
 				1
 				);
 	};
@@ -3561,13 +3562,13 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		selectedNodes = modifySeletedElements(noteIndex);
 		
 		// Text content before the starting node of the selection.
-		var sS =( Vanillanote.variables.editStartNodes[noteIndex] as any).textContent.slice(0,Vanillanote.variables.startOffsets[noteIndex]);
+		var sS =( vn.variables.editStartNodes[noteIndex] as any).textContent.slice(0,vn.variables.startOffsets[noteIndex]);
 		// Text content after the starting node of the selection.
-		var sE =( Vanillanote.variables.editStartNodes[noteIndex] as any).textContent.slice(Vanillanote.variables.startOffsets[noteIndex],Vanillanote.variables.editStartNodes[noteIndex]!.textContent!.length);
+		var sE =( vn.variables.editStartNodes[noteIndex] as any).textContent.slice(vn.variables.startOffsets[noteIndex],vn.variables.editStartNodes[noteIndex]!.textContent!.length);
 		// Text content before the ending node of the selection.
-		var eS = (Vanillanote.variables.editEndNodes[noteIndex] as any).textContent.slice(0,Vanillanote.variables.endOffsets[noteIndex]);
+		var eS = (vn.variables.editEndNodes[noteIndex] as any).textContent.slice(0,vn.variables.endOffsets[noteIndex]);
 		// Text content after the ending node of the selection.
-		var eE = (Vanillanote.variables.editEndNodes[noteIndex] as any).textContent.slice(Vanillanote.variables.endOffsets[noteIndex],Vanillanote.variables.editEndNodes[noteIndex]!.textContent!.length);
+		var eE = (vn.variables.editEndNodes[noteIndex] as any).textContent.slice(vn.variables.endOffsets[noteIndex],vn.variables.editEndNodes[noteIndex]!.textContent!.length);
 		
 		// An internal function used for inserting nodes.
 		var insertSelectedNode = function(tempEl: any, tempUnitEl: any) {
@@ -3576,13 +3577,13 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				tempUnitEl.insertBefore(tempEl, null);
 			}
 			else {
-				(Vanillanote.variables.editStartUnitElements[noteIndex] as any).insertBefore(tempEl, null);
+				(vn.variables.editStartUnitElements[noteIndex] as any).insertBefore(tempEl, null);
 			}
 		}
 		// A condition indicating that the end node of the selection has been reached.
 		var isEnd = false;
 		// A check to determine if the starting node and ending node of the selection are the same.
-		var isStartNodeEqualEndNode = Vanillanote.variables.editStartNodes[noteIndex] === Vanillanote.variables.editEndNodes[noteIndex];
+		var isStartNodeEqualEndNode = vn.variables.editStartNodes[noteIndex] === vn.variables.editEndNodes[noteIndex];
 		for(var i = 0; i < selectedNodes.length; i++) {
 			if(selectedNodes[i].nodeType === 3) {	// A comment indicating that the subsequent code handles text nodes in the selection.
 				if(!attributes) newAttributes = getObjectEditElementAttributes(selectedNodes[i]);	// If no attributes are provided for the new element, use the existing attributes of the node being replaced.
@@ -3599,15 +3600,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 					newCssText = getCssTextFromObject(csses);
 				}
 
-				if(selectedNodes[i] === Vanillanote.variables.editStartNodes[noteIndex]) { // Indicates the starting node of the selection.
+				if(selectedNodes[i] === vn.variables.editStartNodes[noteIndex]) { // Indicates the starting node of the selection.
 					if(isStartNodeEqualEndNode) {	// If the starting node and ending node are the same, remove the text before the starting point up to the ending point.
 						sE = sE.slice(0, sE.length - eE.length);
 					}
 					// Insert text before the starting node.
 					tempEl = getElement(sS,
-							getParentTagName(Vanillanote.variables.editStartNodes[noteIndex]),
-							getCssTextFromObject(getObjectEditElementCss(Vanillanote.variables.editStartNodes[noteIndex])),
-							getObjectEditElementAttributes(Vanillanote.variables.editStartNodes[noteIndex]));
+							getParentTagName(vn.variables.editStartNodes[noteIndex]),
+							getCssTextFromObject(getObjectEditElementCss(vn.variables.editStartNodes[noteIndex])),
+							getObjectEditElementAttributes(vn.variables.editStartNodes[noteIndex]));
 					insertSelectedNode(tempEl, tempUnitEl);
 					// Insert text after the starting node.
 					tempEl = getElement(sE, newTagName, newCssText, newAttributes);
@@ -3619,9 +3620,9 @@ function createVanillanote(Vanillanote: Vanillanote) {
 						// Reset the ending node (same as the starting point).
 						newEndNode = tempEl.firstChild;
 						tempEl = getElement(eE,
-								getParentTagName(Vanillanote.variables.editEndNodes[noteIndex]),
-								getCssTextFromObject(getObjectEditElementCss(Vanillanote.variables.editEndNodes[noteIndex])),
-								getObjectEditElementAttributes(Vanillanote.variables.editEndNodes[noteIndex]));
+								getParentTagName(vn.variables.editEndNodes[noteIndex]),
+								getCssTextFromObject(getObjectEditElementCss(vn.variables.editEndNodes[noteIndex])),
+								getObjectEditElementAttributes(vn.variables.editEndNodes[noteIndex]));
 						insertSelectedNode(tempEl, tempUnitEl);
 						// Set the "isEnd" boolean variable to true.
 						isEnd = true;
@@ -3629,7 +3630,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 					// Remove the starting node.
 					selectedNodes[i].remove();
 				}
-				else if(!isStartNodeEqualEndNode && selectedNodes[i] === Vanillanote.variables.editEndNodes[noteIndex]) {	// For the case where the starting and ending nodes are different, and the current node is the ending node.
+				else if(!isStartNodeEqualEndNode && selectedNodes[i] === vn.variables.editEndNodes[noteIndex]) {	// For the case where the starting and ending nodes are different, and the current node is the ending node.
 					// Insert text before the ending node.
 					tempEl = getElement(eS, newTagName, newCssText, newAttributes);
 					insertSelectedNode(tempEl, tempUnitEl);
@@ -3637,9 +3638,9 @@ function createVanillanote(Vanillanote: Vanillanote) {
 					newEndNode = tempEl.firstChild;
 					// Insert text after the ending node.
 					tempEl = getElement(eE,
-							getParentTagName(Vanillanote.variables.editEndNodes[noteIndex]),
-							getCssTextFromObject(getObjectEditElementCss(Vanillanote.variables.editEndNodes[noteIndex])),
-							getObjectEditElementAttributes(Vanillanote.variables.editEndNodes[noteIndex]));
+							getParentTagName(vn.variables.editEndNodes[noteIndex]),
+							getCssTextFromObject(getObjectEditElementCss(vn.variables.editEndNodes[noteIndex])),
+							getObjectEditElementAttributes(vn.variables.editEndNodes[noteIndex]));
 					insertSelectedNode(tempEl, tempUnitEl);
 					// Set the "isEnd" boolean variable to true.
 					isEnd = true;
@@ -3659,27 +3660,27 @@ function createVanillanote(Vanillanote: Vanillanote) {
 					selectedNodes[i].remove();
 				}
 			}
-			else if(Vanillanote.consts.EMPTY_ABLE_TAG.indexOf(selectedNodes[i].tagName) >= 0) {	// For empty able tags, copy them as they are.
+			else if(vn.consts.EMPTY_ABLE_TAG.indexOf(selectedNodes[i].tagName) >= 0) {	// For empty able tags, copy them as they are.
 				tempEl = selectedNodes[i].cloneNode();
 				insertSelectedNode(tempEl, tempUnitEl);
 				selectedNodes[i].remove();
 			}
-			else if(Vanillanote.consts.UNIT_TAG.indexOf(selectedNodes[i].tagName) >= 0) {	// For unit tags, set the insert position.
+			else if(vn.consts.UNIT_TAG.indexOf(selectedNodes[i].tagName) >= 0) {	// For unit tags, set the insert position.
 				tempUnitEl = selectedNodes[i];
 			}
 		}
 		
 		// Clean up the target elements for editing.
-		for(var i = 0; i < Vanillanote.variables.editDragUnitElements[noteIndex].length; i++) {
-			removeEmptyElment(Vanillanote.variables.editDragUnitElements[noteIndex][i]);
+		for(var i = 0; i < vn.variables.editDragUnitElements[noteIndex].length; i++) {
+			removeEmptyElment(vn.variables.editDragUnitElements[noteIndex][i]);
 		}
 		
 		if(!newStartNode) {
-			newStartNode = Vanillanote.variables.editStartUnitElements[noteIndex];	
+			newStartNode = vn.variables.editStartUnitElements[noteIndex];	
 		}
 		
 		if(!newEndNode) {
-			newEndNode = Vanillanote.variables.editEndUnitElements[noteIndex];
+			newEndNode = vn.variables.editEndUnitElements[noteIndex];
 			newEndOffset = 0;
 		}
 		else {
@@ -3704,7 +3705,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	    var noteIndex = getNoteIndex(e.target);
 	    if(!noteIndex) return;
 	 	// A delay of 0.05 seconds is applied for textarea_onBeforeinputSpelling event to avoid errors when inputting a large number of characters at once.
-		if(!Vanillanote.variables.canEvents) return;
+		if(!vn.variables.canEvents) return;
 		onEventDisable("input");
 		
 		// If no specific range is selected, return.
@@ -3714,20 +3715,20 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var cssText = "";
 		var cssObject = getObjectNoteCss(noteIndex);
 		// Style check is only required for the starting element when inputting.
-		var cssObjectEl = getObjectEditElementCss(Vanillanote.variables.editStartElements[noteIndex]);
+		var cssObjectEl = getObjectEditElementCss(vn.variables.editStartElements[noteIndex]);
 		
 		// Ignore font size when inputting in a header.
-		if ((Vanillanote.variables.editStartUnitElements[noteIndex] as any).tagName.substring(0, 1) === "H") {
+		if ((vn.variables.editStartUnitElements[noteIndex] as any).tagName.substring(0, 1) === "H") {
 			delete cssObject["font-size"];
 			delete cssObject["letter-spacing"];
 			delete cssObject["line-height"];
 		}
 		else {	// If it is not a header, if there are any child elements with missing font-size and line-height, put them back.
-			if(Vanillanote.variables.editStartElements[noteIndex] instanceof Element
-				&& Vanillanote.consts.UNIT_TAG.indexOf((Vanillanote.variables.editStartElements[noteIndex] as any).tagName) < 0
+			if(vn.variables.editStartElements[noteIndex] instanceof Element
+				&& vn.consts.UNIT_TAG.indexOf((vn.variables.editStartElements[noteIndex] as any).tagName) < 0
 				&& (!cssObjectEl["font-size"] || !cssObjectEl["line-height"])) {
 				cssObjectEl = cssObject;
-				setAttributesObjectToElement(Vanillanote.variables.editStartElements[noteIndex], {"style" : getCssTextFromObject(cssObjectEl)});
+				setAttributesObjectToElement(vn.variables.editStartElements[noteIndex], {"style" : getCssTextFromObject(cssObjectEl)});
 			}
 		}
 		
@@ -3741,11 +3742,11 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		
 		// Create the edit point.
 		var selectElement = document.createElement("span");
-		selectElement.setAttribute("class",Vanillanote.variables.noteName + "-point");
+		selectElement.setAttribute("class",vn.variables.noteName + "-point");
 		selectElement.appendChild(document.createTextNode("!"));
 		// Execute only when the starting point is a single point.
-		if((Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
-			(Vanillanote.variables.editRanges[noteIndex] as any).insertNode(selectElement);
+		if((vn.variables.editRanges[noteIndex] as any).collapsed) {
+			(vn.variables.editRanges[noteIndex] as any).insertNode(selectElement);
 			// Modify the style of the selected element.
 			try {
 				modifySelectedSingleElement(noteIndex, getObjectNoteCss(noteIndex));
@@ -3753,7 +3754,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			catch (err){}
 			
 			// Retrieve the edit point.
-			var newSelectElements = document.getElementsByClassName(Vanillanote.variables.noteName + "-point");
+			var newSelectElements = document.getElementsByClassName(vn.variables.noteName + "-point");
 			var newSelectElement = newSelectElements[0];
 			
 			if(cssText) {
@@ -3783,24 +3784,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var noteIndex = getNoteIndex(target);
 		if(!noteIndex) return;
 		if(!isValidSelection(noteIndex)) return;
-		if(Vanillanote.variables.editStartUnitElements[noteIndex] && (Vanillanote.variables.editStartUnitElements[noteIndex] as any).textContent) {
+		if(vn.variables.editStartUnitElements[noteIndex] && (vn.variables.editStartUnitElements[noteIndex] as any).textContent) {
 			return;
 		}
 		// Ignore if it is an empty-able tag (except BR, img, input).
-		if(Vanillanote.variables.editStartNodes[noteIndex] instanceof Element
-			&& Vanillanote.consts.EMPTY_ABLE_TAG.indexOf((Vanillanote.variables.editStartNodes[noteIndex] as any).tagName) >= 0
-			&& (Vanillanote.variables.editStartNodes[noteIndex] as any).tagName !== "BR") {
+		if(vn.variables.editStartNodes[noteIndex] instanceof Element
+			&& vn.consts.EMPTY_ABLE_TAG.indexOf((vn.variables.editStartNodes[noteIndex] as any).tagName) >= 0
+			&& (vn.variables.editStartNodes[noteIndex] as any).tagName !== "BR") {
 			return;
 		}
 		var tempEl1;
 		var tempEl2;
-		var tagName = (Vanillanote.variables.editStartUnitElements[noteIndex] as any).tagName;
+		var tagName = (vn.variables.editStartUnitElements[noteIndex] as any).tagName;
 		tempEl1 = document.createElement(tagName);
 		tempEl2 = document.createElement("BR");
 		tempEl1.appendChild(tempEl2);
-		tempEl1 = setAttributesObjectToElement(tempEl1, (getAttributesObjectFromElement((Vanillanote.variables.editStartUnitElements[noteIndex] as any)) as any));
+		tempEl1 = setAttributesObjectToElement(tempEl1, (getAttributesObjectFromElement((vn.variables.editStartUnitElements[noteIndex] as any)) as any));
 		
-		(Vanillanote.variables.editStartUnitElements[noteIndex] as any).replaceWith(tempEl1);
+		(vn.variables.editStartUnitElements[noteIndex] as any).replaceWith(tempEl1);
 		
 		// Sets the new selection range.
 		setNewSelection(tempEl1, 0, tempEl1, 0);
@@ -3832,7 +3833,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	var removeEmptyElment = function(el: any) {
 		var childrens = el.querySelectorAll("*");
 		for(var i = childrens.length - 1; i >= 0; i--) {
-			if(!(childrens[i].hasChildNodes()) && Vanillanote.consts.EMPTY_ABLE_TAG.indexOf(childrens[i].tagName) < 0) {
+			if(!(childrens[i].hasChildNodes()) && vn.consts.EMPTY_ABLE_TAG.indexOf(childrens[i].tagName) < 0) {
 				childrens[i].remove();
 			}
 		}
@@ -3850,7 +3851,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var isFirstToggle = true;
 		for(var i = 0; i < childrens.length; i++) {
 			// If the parent is not a unit tag or a double tag
-			if(Vanillanote.consts.UNIT_TAG.indexOf(childrens[i].tagName) < 0 && Vanillanote.consts.DOUBLE_TAG.indexOf(childrens[i].tagName) < 0) {
+			if(vn.consts.UNIT_TAG.indexOf(childrens[i].tagName) < 0 && vn.consts.DOUBLE_TAG.indexOf(childrens[i].tagName) < 0) {
 				if(isFirstToggle) {
 					textarea.insertBefore(tempNewUnitElement, childrens[i]);
 					isFirstToggle = false;
@@ -3879,7 +3880,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		//Disconnect the observer.
 		elementsEvent["note_observer"].disconnect();
 		// In the editor, elements not surrounded by unit tags are recreated, wrapped with unit tags.
-		editUnitCheck(Vanillanote.elements.textareas[noteIndex]);
+		editUnitCheck(vn.elements.textareas[noteIndex]);
 		// Reconnect the observer.
 		connectObserver();
 	}
@@ -3889,8 +3890,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @description Connects the observer to all note textareas.
 	*/
 	var connectObserver = function() {
-		for(var i = 0; i < Vanillanote.elements.textareas.length; i++) {
-			elementsEvent["note_observer"].observe(Vanillanote.elements.textareas[i], Vanillanote.variables.observerOptions);
+		for(var i = 0; i < vn.elements.textareas.length; i++) {
+			elementsEvent["note_observer"].observe(vn.elements.textareas[i], vn.variables.observerOptions);
 		}
 	};
 	
@@ -3904,7 +3905,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		if(!parentElement || !childElement) return;
 		if(childElement.nodeType === 3) childElement = childElement.parentNode;
 	    var start: any = null;
-	    var target = childElement.offsetTop - Math.round(Vanillanote.variables.mobileKeyboardExceptHeight! / 2) + Math.round(childElement.offsetHeight / 2);
+	    var target = childElement.offsetTop - Math.round(vn.variables.mobileKeyboardExceptHeight! / 2) + Math.round(childElement.offsetHeight / 2);
 	    var firstPosition = parentElement.scrollTop;
 	    var difference = target - firstPosition;
 	    var duration = 500; // Animation duration in milliseconds
@@ -3930,10 +3931,10 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {HTMLTextAreaElement} textarea - The textarea element to be resized.
 	*/
 	var decreaseTextareaHeight = function(textarea: any, noteIndex: number) {
-		if(extractUnit(Vanillanote.variables.textareaOriginHeights[noteIndex]) !== 'px') return;
-		if(Vanillanote.variables.mobileKeyboardExceptHeight! < extractNumber(Vanillanote.variables.textareaOriginHeights[noteIndex])!
-			&& Vanillanote.variables.mobileKeyboardExceptHeight! < textarea.offsetHeight) {
-			textarea.style.height = Vanillanote.variables.mobileKeyboardExceptHeight + "px";
+		if(extractUnit(vn.variables.textareaOriginHeights[noteIndex]) !== 'px') return;
+		if(vn.variables.mobileKeyboardExceptHeight! < extractNumber(vn.variables.textareaOriginHeights[noteIndex])!
+			&& vn.variables.mobileKeyboardExceptHeight! < textarea.offsetHeight) {
+			textarea.style.height = vn.variables.mobileKeyboardExceptHeight + "px";
 		}
 	};
 	
@@ -3944,7 +3945,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var increaseTextareaHeight = function(textarea: any) {
 		var noteIndex = textarea.getAttribute("data-note-index");
-		textarea.style.height = Vanillanote.variables.textareaOriginHeights[noteIndex];
+		textarea.style.height = vn.variables.textareaOriginHeights[noteIndex];
 	};
 	
 	/**
@@ -3956,11 +3957,11 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	var getCheckSelectBoxesOpened = function(noteIndex: number) {
 		var displayBlock = getId(noteIndex, "on_display_block");
 		
-		if(Vanillanote.elements.paragraphStyleSelectBoxes[noteIndex].classList.contains(displayBlock)) return true;
-		if(Vanillanote.elements.textAlignSelectBoxes[noteIndex].classList.contains(displayBlock)) return true;
-		if(Vanillanote.elements.fontFamilySelectBoxes[noteIndex].classList.contains(displayBlock)) return true;
-		if(Vanillanote.elements.colorTextSelectBoxes[noteIndex].classList.contains(displayBlock)) return true;
-		if(Vanillanote.elements.colorBackSelectBoxes[noteIndex].classList.contains(displayBlock)) return true;
+		if(vn.elements.paragraphStyleSelectBoxes[noteIndex].classList.contains(displayBlock)) return true;
+		if(vn.elements.textAlignSelectBoxes[noteIndex].classList.contains(displayBlock)) return true;
+		if(vn.elements.fontFamilySelectBoxes[noteIndex].classList.contains(displayBlock)) return true;
+		if(vn.elements.colorTextSelectBoxes[noteIndex].classList.contains(displayBlock)) return true;
+		if(vn.elements.colorBackSelectBoxes[noteIndex].classList.contains(displayBlock)) return true;
 		
 		return false;
 	};
@@ -3974,18 +3975,18 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var displayBlock = getId(noteIndex, "on_display_block");
 		var displayNone = getId(noteIndex, "on_display_none");
 		
-		Vanillanote.elements.backModals[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.backModals[noteIndex].classList.add(displayNone);
-		Vanillanote.elements.attLinkModals[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.attLinkModals[noteIndex].classList.add(displayNone);
-		Vanillanote.elements.attFileModals[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.attFileModals[noteIndex].classList.add(displayNone);
-		Vanillanote.elements.attImageModals[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.attImageModals[noteIndex].classList.add(displayNone);
-		Vanillanote.elements.attVideoModals[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.attVideoModals[noteIndex].classList.add(displayNone);
-		Vanillanote.elements.helpModals[noteIndex].classList.remove(displayBlock);
-		Vanillanote.elements.helpModals[noteIndex].classList.add(displayNone);
+		vn.elements.backModals[noteIndex].classList.remove(displayBlock);
+		vn.elements.backModals[noteIndex].classList.add(displayNone);
+		vn.elements.attLinkModals[noteIndex].classList.remove(displayBlock);
+		vn.elements.attLinkModals[noteIndex].classList.add(displayNone);
+		vn.elements.attFileModals[noteIndex].classList.remove(displayBlock);
+		vn.elements.attFileModals[noteIndex].classList.add(displayNone);
+		vn.elements.attImageModals[noteIndex].classList.remove(displayBlock);
+		vn.elements.attImageModals[noteIndex].classList.add(displayNone);
+		vn.elements.attVideoModals[noteIndex].classList.remove(displayBlock);
+		vn.elements.attVideoModals[noteIndex].classList.add(displayNone);
+		vn.elements.helpModals[noteIndex].classList.remove(displayBlock);
+		vn.elements.helpModals[noteIndex].classList.add(displayNone);
 		
 		//Initialize attachment link modal
 		initAttLink(noteIndex);
@@ -4014,22 +4015,22 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		// Open modal background
 		var displayBlock = getId(noteIndex, "on_display_block");
 		var displayNone = getId(noteIndex, "on_display_none");
-		Vanillanote.elements.backModals[noteIndex].classList.remove(displayNone);
-		Vanillanote.elements.backModals[noteIndex].classList.add(displayBlock);
-		Vanillanote.elements.attLinkModals[noteIndex].classList.remove(displayNone);
-		Vanillanote.elements.attLinkModals[noteIndex].classList.add(displayBlock);
+		vn.elements.backModals[noteIndex].classList.remove(displayNone);
+		vn.elements.backModals[noteIndex].classList.add(displayBlock);
+		vn.elements.attLinkModals[noteIndex].classList.remove(displayNone);
+		vn.elements.attLinkModals[noteIndex].classList.add(displayBlock);
 		
 		if(!isValidSelection(noteIndex)) {
 			validCheckAttLink(noteIndex);
 			return;	
 		}
 		
-		var attLinkText: any = Vanillanote.elements.attLinkTexts[noteIndex];
-		var attLinkHref: any = Vanillanote.elements.attLinkHrefs[noteIndex];
-		attLinkText.value = Vanillanote.variables.editRanges[noteIndex]!.toString();
+		var attLinkText: any = vn.elements.attLinkTexts[noteIndex];
+		var attLinkHref: any = vn.elements.attLinkHrefs[noteIndex];
+		attLinkText.value = vn.variables.editRanges[noteIndex]!.toString();
 		attLinkHref.value = "";
 		
-		if(!Vanillanote.variables.editRanges[noteIndex]!.collapsed) {
+		if(!vn.variables.editRanges[noteIndex]!.collapsed) {
 			attLinkText.setAttribute("readonly","true");
 			attLinkHref.focus();
 		}
@@ -4047,17 +4048,17 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {Number} noteIndex - The index of the note where the placeholder is located.
 	*/
 	var openPlaceholder = function(noteIndex: number) {
-		if(Vanillanote.variables.placeholderIsVisible[noteIndex]
-			&& Vanillanote.elements.textareas[noteIndex].innerText.length <= 1
-			&& Vanillanote.elements.textareas[noteIndex].textContent!.length < 1
-			&& Vanillanote.elements.textareas[noteIndex].childNodes.length <= 1
-			&& Vanillanote.elements.textareas[noteIndex].childNodes[0]
-			&& Vanillanote.elements.textareas[noteIndex].childNodes[0].childNodes.length <= 1
-			&& Vanillanote.elements.textareas[noteIndex].childNodes[0].childNodes[0]
-			&& (Vanillanote.elements.textareas[noteIndex].childNodes[0].childNodes[0] as any).tagName === "BR"
+		if(vn.variables.placeholderIsVisible[noteIndex]
+			&& vn.elements.textareas[noteIndex].innerText.length <= 1
+			&& vn.elements.textareas[noteIndex].textContent!.length < 1
+			&& vn.elements.textareas[noteIndex].childNodes.length <= 1
+			&& vn.elements.textareas[noteIndex].childNodes[0]
+			&& vn.elements.textareas[noteIndex].childNodes[0].childNodes.length <= 1
+			&& vn.elements.textareas[noteIndex].childNodes[0].childNodes[0]
+			&& (vn.elements.textareas[noteIndex].childNodes[0].childNodes[0] as any).tagName === "BR"
 		) {
-			Vanillanote.elements.placeholders[noteIndex].classList.remove(getId(noteIndex, "on_display_none"));
-			Vanillanote.elements.placeholders[noteIndex].classList.add(getId(noteIndex, "on_display_block"));
+			vn.elements.placeholders[noteIndex].classList.remove(getId(noteIndex, "on_display_none"));
+			vn.elements.placeholders[noteIndex].classList.add(getId(noteIndex, "on_display_block"));
 		}
 	};
 	
@@ -4067,9 +4068,9 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {Number} noteIndex - The index of the note where the placeholder is located.
 	*/
 	var closePlaceholder = function(noteIndex: number) {
-		if(Vanillanote.variables.placeholderIsVisible[noteIndex]) {
-			Vanillanote.elements.placeholders[noteIndex].classList.remove(getId(noteIndex, "on_display_block"));
-			Vanillanote.elements.placeholders[noteIndex].classList.add(getId(noteIndex, "on_display_none"));
+		if(vn.variables.placeholderIsVisible[noteIndex]) {
+			vn.elements.placeholders[noteIndex].classList.remove(getId(noteIndex, "on_display_block"));
+			vn.elements.placeholders[noteIndex].classList.add(getId(noteIndex, "on_display_none"));
 		}
 	};
 	
@@ -4080,21 +4081,21 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {Number} noteIndex - The index of the note where the modals are located.
 	*/
 	var setAllModalSize = function(noteIndex: number) {
-		if(Vanillanote.elements.templates[noteIndex].offsetParent === null) return
+		if(vn.elements.templates[noteIndex].offsetParent === null) return
 		// Use setTimeout to adjust size according to the dynamic change in textarea's size.
 		setTimeout(function() {
-			Vanillanote.elements.backModals[noteIndex].style.width = Vanillanote.elements.templates[noteIndex].clientWidth + "px";
-			Vanillanote.elements.backModals[noteIndex].style.height = Vanillanote.elements.templates[noteIndex].clientHeight + "px";
-			Vanillanote.elements.attLinkModals[noteIndex].style.width = Vanillanote.elements.textareas[noteIndex].clientWidth*0.8 + "px"
-			Vanillanote.elements.attLinkModals[noteIndex].style.marginTop = Vanillanote.elements.templates[noteIndex].clientHeight*0.1 + "px"
-			Vanillanote.elements.attFileModals[noteIndex].style.width = Vanillanote.elements.textareas[noteIndex].clientWidth*0.8 + "px"
-			Vanillanote.elements.attFileModals[noteIndex].style.marginTop = Vanillanote.elements.templates[noteIndex].clientHeight*0.1 + "px"
-			Vanillanote.elements.attImageModals[noteIndex].style.width = Vanillanote.elements.textareas[noteIndex].clientWidth*0.8 + "px"
-			Vanillanote.elements.attImageModals[noteIndex].style.marginTop = Vanillanote.elements.templates[noteIndex].clientHeight*0.1 + "px"
-			Vanillanote.elements.attVideoModals[noteIndex].style.width = Vanillanote.elements.textareas[noteIndex].clientWidth*0.8 + "px"
-			Vanillanote.elements.attVideoModals[noteIndex].style.marginTop = Vanillanote.elements.templates[noteIndex].clientHeight*0.1 + "px"
-			Vanillanote.elements.helpModals[noteIndex].style.width = Vanillanote.elements.textareas[noteIndex].clientWidth*0.8 + "px"
-			Vanillanote.elements.helpModals[noteIndex].style.marginTop = Vanillanote.elements.templates[noteIndex].clientHeight*0.1 + "px"
+			vn.elements.backModals[noteIndex].style.width = vn.elements.templates[noteIndex].clientWidth + "px";
+			vn.elements.backModals[noteIndex].style.height = vn.elements.templates[noteIndex].clientHeight + "px";
+			vn.elements.attLinkModals[noteIndex].style.width = vn.elements.textareas[noteIndex].clientWidth*0.8 + "px"
+			vn.elements.attLinkModals[noteIndex].style.marginTop = vn.elements.templates[noteIndex].clientHeight*0.1 + "px"
+			vn.elements.attFileModals[noteIndex].style.width = vn.elements.textareas[noteIndex].clientWidth*0.8 + "px"
+			vn.elements.attFileModals[noteIndex].style.marginTop = vn.elements.templates[noteIndex].clientHeight*0.1 + "px"
+			vn.elements.attImageModals[noteIndex].style.width = vn.elements.textareas[noteIndex].clientWidth*0.8 + "px"
+			vn.elements.attImageModals[noteIndex].style.marginTop = vn.elements.templates[noteIndex].clientHeight*0.1 + "px"
+			vn.elements.attVideoModals[noteIndex].style.width = vn.elements.textareas[noteIndex].clientWidth*0.8 + "px"
+			vn.elements.attVideoModals[noteIndex].style.marginTop = vn.elements.templates[noteIndex].clientHeight*0.1 + "px"
+			vn.elements.helpModals[noteIndex].style.width = vn.elements.textareas[noteIndex].clientWidth*0.8 + "px"
+			vn.elements.helpModals[noteIndex].style.marginTop = vn.elements.templates[noteIndex].clientHeight*0.1 + "px"
 		},500);
 	};
 	
@@ -4106,12 +4107,12 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	var setPlaceholderSize = function(noteIndex: number) {
 		// Use setTimeout to adjust size according to the dynamic change in textarea's size.
 		setTimeout(function() {
-			if(!Vanillanote.variables.placeholderIsVisible[noteIndex]) return;
+			if(!vn.variables.placeholderIsVisible[noteIndex]) return;
 			closePlaceholder(noteIndex);
-			if(Vanillanote.elements.textareas[noteIndex].offsetParent === null) return
-			Vanillanote.elements.placeholders[noteIndex].style.top = (Vanillanote.elements.textareas[noteIndex].offsetTop + Vanillanote.variables.placeholderAddTop[noteIndex]) + "px";
-			Vanillanote.elements.placeholders[noteIndex].style.left = (Vanillanote.elements.textareas[noteIndex].offsetLeft + Vanillanote.variables.placeholderAddLeft[noteIndex]) + "px";
-			Vanillanote.elements.placeholders[noteIndex].style.width = Vanillanote.variables.placeholderWidth[noteIndex] ? Vanillanote.variables.placeholderWidth[noteIndex] : Vanillanote.elements.textareas[noteIndex].clientWidth + "px";
+			if(vn.elements.textareas[noteIndex].offsetParent === null) return
+			vn.elements.placeholders[noteIndex].style.top = (vn.elements.textareas[noteIndex].offsetTop + vn.variables.placeholderAddTop[noteIndex]) + "px";
+			vn.elements.placeholders[noteIndex].style.left = (vn.elements.textareas[noteIndex].offsetLeft + vn.variables.placeholderAddLeft[noteIndex]) + "px";
+			vn.elements.placeholders[noteIndex].style.width = vn.variables.placeholderWidth[noteIndex] ? vn.variables.placeholderWidth[noteIndex] : vn.elements.textareas[noteIndex].clientWidth + "px";
 			openPlaceholder(noteIndex);
 		},100);
 	};
@@ -4122,9 +4123,9 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note for which to adjust tooltip positions.
 	*/
 	var setAllToolTipPosition = function(noteIndex: number) {
-		if(Vanillanote.variables.toolPositions[noteIndex] === "BOTTOM") {
-			Vanillanote.elements.attLinkTooltips[noteIndex].style.bottom = Vanillanote.elements.tools[noteIndex].style.height;
-			Vanillanote.elements.attImageAndVideoTooltips[noteIndex].style.bottom = Vanillanote.elements.tools[noteIndex].style.height;
+		if(vn.variables.toolPositions[noteIndex] === "BOTTOM") {
+			vn.elements.attLinkTooltips[noteIndex].style.bottom = vn.elements.tools[noteIndex].style.height;
+			vn.elements.attImageAndVideoTooltips[noteIndex].style.bottom = vn.elements.tools[noteIndex].style.height;
 		}
 	};
 	
@@ -4134,10 +4135,10 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note for which to close all tooltips.
 	*/
 	var closeAllTooltip = function(noteIndex: number) {
-		Vanillanote.elements.attLinkTooltips[noteIndex].style.opacity = "0";
-		Vanillanote.elements.attLinkTooltips[noteIndex].style.height  = "0";
-		Vanillanote.elements.attImageAndVideoTooltips[noteIndex].style.opacity = "0";
-		Vanillanote.elements.attImageAndVideoTooltips[noteIndex].style.height  = "0";
+		vn.elements.attLinkTooltips[noteIndex].style.opacity = "0";
+		vn.elements.attLinkTooltips[noteIndex].style.height  = "0";
+		vn.elements.attImageAndVideoTooltips[noteIndex].style.opacity = "0";
+		vn.elements.attImageAndVideoTooltips[noteIndex].style.height  = "0";
 	};
 	
 	/**
@@ -4146,7 +4147,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note in which the tooltip should appear.
 	*/
 	var appearAttLinkToolTip = function(noteIndex: number) {
-        var a: any = Vanillanote.variables.editStartNodes[noteIndex]!.parentElement;
+        var a: any = vn.variables.editStartNodes[noteIndex]!.parentElement;
 
 		var href = a.getAttribute("href");
         var download = a.getAttribute("download");
@@ -4154,28 +4155,28 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var displayInlineBlock = getId(noteIndex, "on_display_inline_block");
 		var displayNone = getId(noteIndex, "on_display_none");
 
-        Vanillanote.elements.attLinkTooltipEditButtons[noteIndex].classList.remove(displayNone);
-        Vanillanote.elements.attLinkTooltipUnlinkButtons[noteIndex].classList.remove(displayNone);
-        Vanillanote.elements.attLinkTooltipEditButtons[noteIndex].classList.add(displayInlineBlock);
-        Vanillanote.elements.attLinkTooltipUnlinkButtons[noteIndex].classList.add(displayInlineBlock);
+        vn.elements.attLinkTooltipEditButtons[noteIndex].classList.remove(displayNone);
+        vn.elements.attLinkTooltipUnlinkButtons[noteIndex].classList.remove(displayNone);
+        vn.elements.attLinkTooltipEditButtons[noteIndex].classList.add(displayInlineBlock);
+        vn.elements.attLinkTooltipUnlinkButtons[noteIndex].classList.add(displayInlineBlock);
 
 		if(href) {
-			Vanillanote.elements.attLinkTooltipHrefs[noteIndex].setAttribute("href",href);
-			Vanillanote.elements.attLinkTooltipHrefs[noteIndex].textContent = href.length > 25 ? href.substr(0,25) + "..." : href;
+			vn.elements.attLinkTooltipHrefs[noteIndex].setAttribute("href",href);
+			vn.elements.attLinkTooltipHrefs[noteIndex].textContent = href.length > 25 ? href.substr(0,25) + "..." : href;
 		}
         if(download) {
-            Vanillanote.elements.attLinkTooltipHrefs[noteIndex].setAttribute("download",download);
-            Vanillanote.elements.attLinkTooltipHrefs[noteIndex].textContent = "download : " + download;
+            vn.elements.attLinkTooltipHrefs[noteIndex].setAttribute("download",download);
+            vn.elements.attLinkTooltipHrefs[noteIndex].textContent = "download : " + download;
 
-            Vanillanote.elements.attLinkTooltipEditButtons[noteIndex].classList.remove(displayInlineBlock);
-            Vanillanote.elements.attLinkTooltipUnlinkButtons[noteIndex].classList.remove(displayInlineBlock);
-            Vanillanote.elements.attLinkTooltipEditButtons[noteIndex].classList.add(displayNone);
-            Vanillanote.elements.attLinkTooltipUnlinkButtons[noteIndex].classList.add(displayNone);
+            vn.elements.attLinkTooltipEditButtons[noteIndex].classList.remove(displayInlineBlock);
+            vn.elements.attLinkTooltipUnlinkButtons[noteIndex].classList.remove(displayInlineBlock);
+            vn.elements.attLinkTooltipEditButtons[noteIndex].classList.add(displayNone);
+            vn.elements.attLinkTooltipUnlinkButtons[noteIndex].classList.add(displayNone);
         }
 
-		Vanillanote.elements.attLinkTooltips[noteIndex].style.opacity = "0.95";
-		Vanillanote.elements.attLinkTooltips[noteIndex].style.height  = Vanillanote.variables.sizeRates[noteIndex] * 54 * 0.8 + "px";
-		Vanillanote.elements.attLinkTooltips[noteIndex].style.lineHeight  = Vanillanote.variables.sizeRates[noteIndex] * 54 * 0.8 + "px";
+		vn.elements.attLinkTooltips[noteIndex].style.opacity = "0.95";
+		vn.elements.attLinkTooltips[noteIndex].style.height  = vn.variables.sizeRates[noteIndex] * 54 * 0.8 + "px";
+		vn.elements.attLinkTooltips[noteIndex].style.lineHeight  = vn.variables.sizeRates[noteIndex] * 54 * 0.8 + "px";
 	};
 	
 	/**
@@ -4184,39 +4185,39 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note in which the tooltip should appear.
 	*/
 	var appearAttImageAndVideoTooltip = function(noteIndex: number) {
-		var img = Vanillanote.variables.editStartNodes[noteIndex];
+		var img = vn.variables.editStartNodes[noteIndex];
 		var cssObj: any = getObjectFromCssText((getAttributesObjectFromElement(img) as any)["style"]);
 		//width
 		if(cssObj["width"]) {
-			(Vanillanote.elements.attImageAndVideoTooltipWidthInputs[noteIndex] as any).value = extractNumber(cssObj["width"]);
+			(vn.elements.attImageAndVideoTooltipWidthInputs[noteIndex] as any).value = extractNumber(cssObj["width"]);
 		}
 		//float
 		switch(cssObj["float"]) {
         case "left":
-        	(Vanillanote.elements.attImageAndVideoTooltipFloatRadioLefts[noteIndex] as any).checked = true;
+        	(vn.elements.attImageAndVideoTooltipFloatRadioLefts[noteIndex] as any).checked = true;
 			break;
         case "right":
-        	(Vanillanote.elements.attImageAndVideoTooltipFloatRadioRights[noteIndex] as any).checked = true;
+        	(vn.elements.attImageAndVideoTooltipFloatRadioRights[noteIndex] as any).checked = true;
 			break;
 		default :
-			(Vanillanote.elements.attImageAndVideoTooltipFloatRadioNones[noteIndex] as any).checked = true;
+			(vn.elements.attImageAndVideoTooltipFloatRadioNones[noteIndex] as any).checked = true;
 			break;
 		}
 		//shape
-		(Vanillanote.elements.attImageAndVideoTooltipShapeRadioSquares[noteIndex] as any).checked = true;
+		(vn.elements.attImageAndVideoTooltipShapeRadioSquares[noteIndex] as any).checked = true;
 		if(cssObj["border-radius"]) {
 			var borderRadius: any = extractNumber(cssObj["border-radius"]);
 			if(borderRadius > 0) {
-				(Vanillanote.elements.attImageAndVideoTooltipShapeRadioRadiuses[noteIndex] as any).checked = true;
+				(vn.elements.attImageAndVideoTooltipShapeRadioRadiuses[noteIndex] as any).checked = true;
 			}
 			else if(borderRadius >= 50) {
-				(Vanillanote.elements.attImageAndVideoTooltipShapeRadioCircles[noteIndex] as any).checked = true;
+				(vn.elements.attImageAndVideoTooltipShapeRadioCircles[noteIndex] as any).checked = true;
 			}
 		}
 		
-		Vanillanote.elements.attImageAndVideoTooltips[noteIndex].style.opacity = "0.9";
-		Vanillanote.elements.attImageAndVideoTooltips[noteIndex].style.height  = Vanillanote.variables.sizeRates[noteIndex] * 54 * 0.8 * 2 + "px";
-		Vanillanote.elements.attImageAndVideoTooltips[noteIndex].style.lineHeight  = Vanillanote.variables.sizeRates[noteIndex] * 54 * 0.7 + "px";
+		vn.elements.attImageAndVideoTooltips[noteIndex].style.opacity = "0.9";
+		vn.elements.attImageAndVideoTooltips[noteIndex].style.height  = vn.variables.sizeRates[noteIndex] * 54 * 0.8 * 2 + "px";
+		vn.elements.attImageAndVideoTooltips[noteIndex].style.lineHeight  = vn.variables.sizeRates[noteIndex] * 54 * 0.7 + "px";
 	};
 	
 	/**
@@ -4229,15 +4230,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var widthPer = el.value;
 		var noteIndex = getNoteIndex(el);
 		if(!noteIndex) return;
-		var imgNode: any = Vanillanote.variables.editStartNodes[noteIndex];
+		var imgNode: any = vn.variables.editStartNodes[noteIndex];
 		if(imgNode.tagName !== "IMG" && imgNode.tagName !== "IFRAME") return;
 		
 		if(widthPer < 10) widthPer = 10;
 		if(widthPer > 100) widthPer = 100;
 		el.value = widthPer;
 		imgNode.style.width = widthPer + "%";
-		(Vanillanote.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (Vanillanote.variables.editStartNodes[noteIndex] as any));
-		Vanillanote.variables.editStartNodes[noteIndex] = imgNode;
+		(vn.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (vn.variables.editStartNodes[noteIndex] as any));
+		vn.variables.editStartNodes[noteIndex] = imgNode;
 	};
 	
 	/**
@@ -4272,7 +4273,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note (assumed to be a unique identifier).
 	*/
 	var setAllToolSize = function(noteIndex: number) {
-		var toolButtons: any =  Vanillanote.elements.tools[noteIndex].childNodes;
+		var toolButtons: any =  vn.elements.tools[noteIndex].childNodes;
 		
 		var displayInlineBlock = getId(noteIndex, "on_display_inline_block");
 		var displayNone = getId(noteIndex, "on_display_none");
@@ -4283,10 +4284,10 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			toolButtons[i].classList.remove(displayNone);
 		}
 		
-		if(Vanillanote.elements.tools[noteIndex].offsetParent === null) return;
+		if(vn.elements.tools[noteIndex].offsetParent === null) return;
 		
 		// Control toolbar size based on toggle state
-		if(!Vanillanote.variables.toolToggles[noteIndex]) {	// Toggle false state: Resize the toolbar based on the last visible button.
+		if(!vn.variables.toolToggles[noteIndex]) {	// Toggle false state: Resize the toolbar based on the last visible button.
 			var toolAbsoluteTop;
 			var lastButton;
 			var lastButtonAbsoluteTop;
@@ -4299,18 +4300,18 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				}
 			}
 			
-			if(Vanillanote.elements.tools[noteIndex].offsetParent === null) return;
-			toolAbsoluteTop = window.pageYOffset + Vanillanote.elements.tools[noteIndex].getBoundingClientRect().top;
+			if(vn.elements.tools[noteIndex].offsetParent === null) return;
+			toolAbsoluteTop = window.pageYOffset + vn.elements.tools[noteIndex].getBoundingClientRect().top;
 			lastButtonAbsoluteTop = window.pageYOffset + lastButton.getBoundingClientRect().top;
-			differ = lastButtonAbsoluteTop - toolAbsoluteTop + (Vanillanote.variables.sizeRates[noteIndex] * 52);
+			differ = lastButtonAbsoluteTop - toolAbsoluteTop + (vn.variables.sizeRates[noteIndex] * 52);
 			
-			Vanillanote.elements.tools[noteIndex].style.height = (differ) + "px";	// Set the height of the toolbar accordingly.
+			vn.elements.tools[noteIndex].style.height = (differ) + "px";	// Set the height of the toolbar accordingly.
 		}
 		else {// Toggle true state: Keep the size to default lines and hide overflowing buttons.
-			Vanillanote.elements.tools[noteIndex].style.height = (Vanillanote.variables.toolDefaultLines[noteIndex] * (Vanillanote.variables.sizeRates[noteIndex] * 52)) + "px";
+			vn.elements.tools[noteIndex].style.height = (vn.variables.toolDefaultLines[noteIndex] * (vn.variables.sizeRates[noteIndex] * 52)) + "px";
 			// Hide buttons that are not within the bounds of the toolbar.
 			for(var i = toolButtons.length - 1; i >= 0; i--) {
-				if(!isElementInParentBounds(Vanillanote.elements.tools[noteIndex],toolButtons[i])) {
+				if(!isElementInParentBounds(vn.elements.tools[noteIndex],toolButtons[i])) {
 					toolButtons[i].classList.remove(displayInlineBlock);
 					toolButtons[i].classList.add(displayNone);
 				}
@@ -4324,9 +4325,9 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note where the elements need to be initialized.
 	*/
 	var initAttLink = function(noteIndex: number) {
-		(Vanillanote.elements.attLinkTexts[noteIndex] as any).value = "";
-		(Vanillanote.elements.attLinkHrefs[noteIndex] as any).value = "";
-		(Vanillanote.elements.attLinkIsBlankCheckboxes[noteIndex] as any).checked = false;
+		(vn.elements.attLinkTexts[noteIndex] as any).value = "";
+		(vn.elements.attLinkHrefs[noteIndex] as any).value = "";
+		(vn.elements.attLinkIsBlankCheckboxes[noteIndex] as any).checked = false;
 	};
 	
 	/**
@@ -4335,23 +4336,23 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note where the link attachment needs to be validated.
 	*/
 	var validCheckAttLink = function(noteIndex: number) {
-		if(!(Vanillanote.elements.attLinkTexts[noteIndex] as any).value) {
-			(Vanillanote.elements.attLinkValidCheckboxes[noteIndex] as any).checked = false;
-			Vanillanote.elements.attLinkValidCheckTexts[noteIndex].style.color = getHexColorFromColorName(Vanillanote.colors.color9[noteIndex]);
-			Vanillanote.elements.attLinkValidCheckTexts[noteIndex].textContent = Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attLinkInTextTooltip;	//COMMENT
+		if(!(vn.elements.attLinkTexts[noteIndex] as any).value) {
+			(vn.elements.attLinkValidCheckboxes[noteIndex] as any).checked = false;
+			vn.elements.attLinkValidCheckTexts[noteIndex].style.color = getHexColorFromColorName(vn.colors.color9[noteIndex]);
+			vn.elements.attLinkValidCheckTexts[noteIndex].textContent = vn.languageSet[vn.variables.languages[noteIndex]].attLinkInTextTooltip;	//COMMENT
 			return;
 		}
 		
-		if(!(Vanillanote.elements.attLinkHrefs[noteIndex] as any).value) {
-			(Vanillanote.elements.attLinkValidCheckboxes[noteIndex] as any).checked = false;
-			Vanillanote.elements.attLinkValidCheckTexts[noteIndex].style.color = getHexColorFromColorName(Vanillanote.colors.color9[noteIndex]);
-			Vanillanote.elements.attLinkValidCheckTexts[noteIndex].textContent = Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attLinkInLinkTooltip;	//COMMENT
+		if(!(vn.elements.attLinkHrefs[noteIndex] as any).value) {
+			(vn.elements.attLinkValidCheckboxes[noteIndex] as any).checked = false;
+			vn.elements.attLinkValidCheckTexts[noteIndex].style.color = getHexColorFromColorName(vn.colors.color9[noteIndex]);
+			vn.elements.attLinkValidCheckTexts[noteIndex].textContent = vn.languageSet[vn.variables.languages[noteIndex]].attLinkInLinkTooltip;	//COMMENT
 			return;
 		}
 		
-		(Vanillanote.elements.attLinkValidCheckboxes[noteIndex] as any).checked = true;
-		Vanillanote.elements.attLinkValidCheckTexts[noteIndex].style.color = getHexColorFromColorName(Vanillanote.colors.color8[noteIndex]);
-		Vanillanote.elements.attLinkValidCheckTexts[noteIndex].textContent = Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].thanks;	//COMMENT
+		(vn.elements.attLinkValidCheckboxes[noteIndex] as any).checked = true;
+		vn.elements.attLinkValidCheckTexts[noteIndex].style.color = getHexColorFromColorName(vn.colors.color8[noteIndex]);
+		vn.elements.attLinkValidCheckTexts[noteIndex].textContent = vn.languageSet[vn.variables.languages[noteIndex]].thanks;	//COMMENT
 	};
 
 	/**
@@ -4360,16 +4361,16 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note where the video attachment needs to be validated.
 	*/
 	var validCheckAttVideo = function(noteIndex: number) {
-		if(!(Vanillanote.elements.attVideoEmbedIds[noteIndex] as any).value) {
-			(Vanillanote.elements.attVideoValidCheckboxes[noteIndex] as any).checked = false;
-			Vanillanote.elements.attVideoValidCheckTexts[noteIndex].style.color = getHexColorFromColorName(Vanillanote.colors.color9[noteIndex]);
-			Vanillanote.elements.attVideoValidCheckTexts[noteIndex].textContent = Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attVideoEmbedIdTooltip;	//COMMENT
+		if(!(vn.elements.attVideoEmbedIds[noteIndex] as any).value) {
+			(vn.elements.attVideoValidCheckboxes[noteIndex] as any).checked = false;
+			vn.elements.attVideoValidCheckTexts[noteIndex].style.color = getHexColorFromColorName(vn.colors.color9[noteIndex]);
+			vn.elements.attVideoValidCheckTexts[noteIndex].textContent = vn.languageSet[vn.variables.languages[noteIndex]].attVideoEmbedIdTooltip;	//COMMENT
 			return;
 		}
 		
-		(Vanillanote.elements.attVideoValidCheckboxes[noteIndex] as any).checked = true;
-		Vanillanote.elements.attVideoValidCheckTexts[noteIndex].style.color = getHexColorFromColorName(Vanillanote.colors.color8[noteIndex]);
-		Vanillanote.elements.attVideoValidCheckTexts[noteIndex].textContent = Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].thanks;	//COMMENT
+		(vn.elements.attVideoValidCheckboxes[noteIndex] as any).checked = true;
+		vn.elements.attVideoValidCheckTexts[noteIndex].style.color = getHexColorFromColorName(vn.colors.color8[noteIndex]);
+		vn.elements.attVideoValidCheckTexts[noteIndex].textContent = vn.languageSet[vn.variables.languages[noteIndex]].thanks;	//COMMENT
 	};
 	
 	/**
@@ -4379,29 +4380,29 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var setAttTempFileValid = function(noteIndex: number) {
 		var newAttTempFiles: any = new Object;
-		var keys = Object.keys(Vanillanote.variables.attTempFiles[noteIndex]);
+		var keys = Object.keys(vn.variables.attTempFiles[noteIndex]);
 		for(var i = 0; i < keys.length; i++) {
-			if(Vanillanote.variables.attFileAcceptTypes[noteIndex].length > 0) {
-				if(Vanillanote.variables.attFileAcceptTypes[noteIndex].includes(Vanillanote.variables.attTempFiles[noteIndex][keys[i]].type)) {
-					newAttTempFiles[keys[i]] = Vanillanote.variables.attTempFiles[noteIndex][keys[i]];
+			if(vn.variables.attFileAcceptTypes[noteIndex].length > 0) {
+				if(vn.variables.attFileAcceptTypes[noteIndex].includes(vn.variables.attTempFiles[noteIndex][keys[i]].type)) {
+					newAttTempFiles[keys[i]] = vn.variables.attTempFiles[noteIndex][keys[i]];
 				}
 			}
 			else {
-				newAttTempFiles[keys[i]] = Vanillanote.variables.attTempFiles[noteIndex][keys[i]];
+				newAttTempFiles[keys[i]] = vn.variables.attTempFiles[noteIndex][keys[i]];
 			}
 			
 			if(!newAttTempFiles[keys[i]]) continue;
 			
-			if(Vanillanote.variables.attFilePreventTypes[noteIndex].includes(newAttTempFiles[keys[i]].type)) {
-				showAlert("[" + newAttTempFiles[keys[i]].name + "] " + Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attPreventType);
+			if(vn.variables.attFilePreventTypes[noteIndex].includes(newAttTempFiles[keys[i]].type)) {
+				showAlert("[" + newAttTempFiles[keys[i]].name + "] " + vn.languageSet[vn.variables.languages[noteIndex]].attPreventType);
 				delete newAttTempFiles[keys[i]];
 			}
-			else if(newAttTempFiles[keys[i]].size >= Vanillanote.variables.attFileMaxSizes[noteIndex]) {
-				showAlert("[" + newAttTempFiles[keys[i]].name + "] " + Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attOverSize);
+			else if(newAttTempFiles[keys[i]].size >= vn.variables.attFileMaxSizes[noteIndex]) {
+				showAlert("[" + newAttTempFiles[keys[i]].name + "] " + vn.languageSet[vn.variables.languages[noteIndex]].attOverSize);
 				delete newAttTempFiles[keys[i]];
 			}
 		}
-		Vanillanote.variables.attTempFiles[noteIndex] = newAttTempFiles;
+		vn.variables.attTempFiles[noteIndex] = newAttTempFiles;
 	};
 	
 	/**
@@ -4410,28 +4411,28 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note for which the attFileUploadDiv needs to be set up.
 	*/
 	var setAttFileUploadDiv = function(noteIndex: number) {
-		if((Vanillanote.variables.attTempFiles[noteIndex] as any).length <= 0) {
-        	Vanillanote.elements.attFileUploadDivs[noteIndex].style.removeProperty("line-height");
-        	Vanillanote.elements.attFileUploadDivs[noteIndex].textContent = Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attFileUploadDiv;
+		if((vn.variables.attTempFiles[noteIndex] as any).length <= 0) {
+        	vn.elements.attFileUploadDivs[noteIndex].style.removeProperty("line-height");
+        	vn.elements.attFileUploadDivs[noteIndex].textContent = vn.languageSet[vn.variables.languages[noteIndex]].attFileUploadDiv;
         	return;
         } else {
-        	Vanillanote.elements.attFileUploadDivs[noteIndex].style.lineHeight = "unset";
+        	vn.elements.attFileUploadDivs[noteIndex].style.lineHeight = "unset";
         }
-		Vanillanote.elements.attFileUploadDivs[noteIndex].replaceChildren();
+		vn.elements.attFileUploadDivs[noteIndex].replaceChildren();
 		
-		var keys = Object.keys(Vanillanote.variables.attTempFiles[noteIndex]);
+		var keys = Object.keys(vn.variables.attTempFiles[noteIndex]);
 		var tempEl;
 		for(var i = 0; i < keys.length; i++) {
 			tempEl = getElement(
-				Vanillanote.variables.attTempFiles[noteIndex][keys[i]].name,
+				vn.variables.attTempFiles[noteIndex][keys[i]].name,
 				"P",
 				"display:block;padding:0.5em 0;",
 				{
-					"title":Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attFileListTooltip,
+					"title":vn.languageSet[vn.variables.languages[noteIndex]].attFileListTooltip,
 					"uuid":keys[i]
 				}
 			);
-			Vanillanote.elements.attFileUploadDivs[noteIndex].appendChild(tempEl);
+			vn.elements.attFileUploadDivs[noteIndex].appendChild(tempEl);
 		}
 	};
 	
@@ -4442,29 +4443,29 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var setAttTempImageValid = function(noteIndex: number) {
 		var newAttTempImages: any = new Object;
-		var keys = Object.keys(Vanillanote.variables.attTempImages[noteIndex]);
+		var keys = Object.keys(vn.variables.attTempImages[noteIndex]);
 		for(var i = 0; i < keys.length; i++) {
-			if(Vanillanote.variables.attImageAcceptTypes[noteIndex].length > 0) {
-				if(Vanillanote.variables.attImageAcceptTypes[noteIndex].includes(Vanillanote.variables.attTempImages[noteIndex][keys[i]].type)) {
-					newAttTempImages[keys[i]] = Vanillanote.variables.attTempImages[noteIndex][keys[i]];
+			if(vn.variables.attImageAcceptTypes[noteIndex].length > 0) {
+				if(vn.variables.attImageAcceptTypes[noteIndex].includes(vn.variables.attTempImages[noteIndex][keys[i]].type)) {
+					newAttTempImages[keys[i]] = vn.variables.attTempImages[noteIndex][keys[i]];
 				}
 			}
 			else {
-				newAttTempImages[keys[i]] = Vanillanote.variables.attTempImages[noteIndex][keys[i]];
+				newAttTempImages[keys[i]] = vn.variables.attTempImages[noteIndex][keys[i]];
 			}
 			
 			if(!newAttTempImages[keys[i]]) continue;
 			
-			if(Vanillanote.variables.attImagePreventTypes[noteIndex].includes(newAttTempImages[keys[i]].type)) {
-				showAlert("[" + newAttTempImages[keys[i]].name + "] " + Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attPreventType);
+			if(vn.variables.attImagePreventTypes[noteIndex].includes(newAttTempImages[keys[i]].type)) {
+				showAlert("[" + newAttTempImages[keys[i]].name + "] " + vn.languageSet[vn.variables.languages[noteIndex]].attPreventType);
 				delete newAttTempImages[keys[i]];
 			}
-			else if(newAttTempImages[keys[i]].size >= Vanillanote.variables.attImageMaxSizes[noteIndex]) {
-				showAlert("[" + newAttTempImages[keys[i]].name + "] " + Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attOverSize);
+			else if(newAttTempImages[keys[i]].size >= vn.variables.attImageMaxSizes[noteIndex]) {
+				showAlert("[" + newAttTempImages[keys[i]].name + "] " + vn.languageSet[vn.variables.languages[noteIndex]].attOverSize);
 				delete newAttTempImages[keys[i]];
 			}
 		}
-		Vanillanote.variables.attTempImages[noteIndex] = newAttTempImages;
+		vn.variables.attTempImages[noteIndex] = newAttTempImages;
 	};
 
 	/**
@@ -4473,14 +4474,14 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note for which the attImageUploadAndView needs to be set up.
 	*/
 	var setAttImageUploadAndView = function(noteIndex: number) {
-		var keys = Object.keys(Vanillanote.variables.attTempImages[noteIndex]);
+		var keys = Object.keys(vn.variables.attTempImages[noteIndex]);
 		if(keys.length <= 0) return;
 		var file;
         var tempEl;
         
-       	Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].replaceChildren();
+       	vn.elements.attImageUploadButtonAndViews[noteIndex].replaceChildren();
 		for(var i = 0; i < keys.length; i++) {
-			file = Vanillanote.variables.attTempImages[noteIndex][keys[i]];
+			file = vn.variables.attTempImages[noteIndex][keys[i]];
         	tempEl = document.createElement("img");
         	tempEl.src = URL.createObjectURL(file);
         	tempEl.style.width = "auto";
@@ -4488,11 +4489,11 @@ function createVanillanote(Vanillanote: Vanillanote) {
         	tempEl.style.display = "inline-block";
         	tempEl.style.margin = "0 5px"
         	
-	       	Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].appendChild(tempEl);
+	       	vn.elements.attImageUploadButtonAndViews[noteIndex].appendChild(tempEl);
 		}
 	    
-	    (Vanillanote.elements.attImageURLs[noteIndex] as any).value = "";
-	    Vanillanote.elements.attImageURLs[noteIndex].setAttribute("readonly","true");
+	    (vn.elements.attImageURLs[noteIndex] as any).value = "";
+	    vn.elements.attImageURLs[noteIndex].setAttribute("readonly","true");
 	};
 	
 	/**
@@ -4501,12 +4502,12 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note for which the attTempFiles and attFileUploadDiv need to be initialized.
 	*/
 	var initAttFile = function(noteIndex: number) {
-		delete Vanillanote.variables.attTempFiles[noteIndex];
-		(Vanillanote.variables.attTempFiles[noteIndex] as any) = new Object;
-		Vanillanote.elements.attFileUploadDivs[noteIndex].replaceChildren();
-		Vanillanote.elements.attFileUploadDivs[noteIndex].textContent = Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attFileUploadDiv;
-		Vanillanote.elements.attFileUploadDivs[noteIndex].style.lineHeight = Vanillanote.variables.sizeRates[noteIndex] * 130 + "px";
-		(Vanillanote.elements.attFileUploads[noteIndex] as any).value = "";
+		delete vn.variables.attTempFiles[noteIndex];
+		(vn.variables.attTempFiles[noteIndex] as any) = new Object;
+		vn.elements.attFileUploadDivs[noteIndex].replaceChildren();
+		vn.elements.attFileUploadDivs[noteIndex].textContent = vn.languageSet[vn.variables.languages[noteIndex]].attFileUploadDiv;
+		vn.elements.attFileUploadDivs[noteIndex].style.lineHeight = vn.variables.sizeRates[noteIndex] * 130 + "px";
+		(vn.elements.attFileUploads[noteIndex] as any).value = "";
 	};
 	
 	/**
@@ -4515,29 +4516,29 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	* @param {number} noteIndex - The index of the note for which the attTempImages, attImageUploadButtonAndViews, and attImageURLs need to be initialized.
 	*/
 	var initAttImage = function(noteIndex: number) {
-		delete Vanillanote.variables.attTempImages[noteIndex];
-		(Vanillanote.variables.attTempImages[noteIndex] as any) = new Object;
-		Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].replaceChildren();
-		Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].textContent = Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attImageUploadButtonAndView;
-		(Vanillanote.elements.attImageUploads[noteIndex] as any).value = "";
-		(Vanillanote.elements.attImageURLs[noteIndex] as any).value = "";
-		Vanillanote.elements.attImageURLs[noteIndex].removeAttribute("readonly");
+		delete vn.variables.attTempImages[noteIndex];
+		(vn.variables.attTempImages[noteIndex] as any) = new Object;
+		vn.elements.attImageUploadButtonAndViews[noteIndex].replaceChildren();
+		vn.elements.attImageUploadButtonAndViews[noteIndex].textContent = vn.languageSet[vn.variables.languages[noteIndex]].attImageUploadButtonAndView;
+		(vn.elements.attImageUploads[noteIndex] as any).value = "";
+		(vn.elements.attImageURLs[noteIndex] as any).value = "";
+		vn.elements.attImageURLs[noteIndex].removeAttribute("readonly");
 	};
 	
 	/**
 	 * consoleLog
-	 * @description Custom logging function based on the logMode defined in Vanillanote.variables.
+	 * @description Custom logging function based on the logMode defined in vn.variables.
 	 * - In "DEBUG" mode, it logs all the provided arguments.
 	 * - In "INFO" mode, it logs only the first argument.
 	 * - In other modes, the function does nothing.
 	 * @param {...*} arguments - The arguments to be logged. Can be of any type.
 	 */
 	var consoleLog = function(...params: any[]) {
-		if(Vanillanote.variables.logMode === "DEBUG") {
+		if(vn.variables.logMode === "DEBUG") {
 			for(var i = 0; i < arguments.length; i++) {
 				console.log(arguments[i]);
 			}
-		} else if(Vanillanote.variables.logMode === "INFO") {
+		} else if(vn.variables.logMode === "INFO") {
 			console.log(arguments[0]);
 		} else {
 			return;
@@ -4547,26 +4548,26 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	//==================================================================================
 	//user using function
 	var showAlert = function(message: string) {
-		consoleLog("Vanillanote._beforeAlert", "params :" , "(message)", message);
-		if(!Vanillanote._beforeAlert(message)) return;
+		consoleLog("vn._beforeAlert", "params :" , "(message)", message);
+		if(!vn._beforeAlert(message)) return;
 		consoleLog("window.alert", "params :" , "(message)", message);
 		alert(message);
 	};
 	var getNoteData = function() {
 		var noteIndex = getNoteIndex(this);
-		var textarea = Vanillanote.elements.textareas[noteIndex];
+		var textarea = vn.elements.textareas[noteIndex];
 		
 		var fileEls = textarea.querySelectorAll("[uuid]");
 		
 		var attFiles: any = {};
-		for (var key in Vanillanote.variables.attFiles[noteIndex]) {
-			if (Vanillanote.variables.attFiles[noteIndex].hasOwnProperty(key)) {
-				attFiles[key] = Vanillanote.variables.attFiles[noteIndex][key];
+		for (var key in vn.variables.attFiles[noteIndex]) {
+			if (vn.variables.attFiles[noteIndex].hasOwnProperty(key)) {
+				attFiles[key] = vn.variables.attFiles[noteIndex][key];
 			}
 		}
-		for (var key in Vanillanote.variables.attImages[noteIndex]) {
-			if (Vanillanote.variables.attImages[noteIndex].hasOwnProperty(key)) {
-				attFiles[key] = Vanillanote.variables.attImages[noteIndex][key];
+		for (var key in vn.variables.attImages[noteIndex]) {
+			if (vn.variables.attImages[noteIndex].hasOwnProperty(key)) {
+				attFiles[key] = vn.variables.attImages[noteIndex][key];
 			}
 		}
 		var attFileKeys = Object.keys(attFiles);
@@ -4594,69 +4595,69 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		
 		return noteData;
 	};
-	var getNote = function() {return Vanillanote;};
+	var getNote = function() {return vn;};
 	//==================================================================================
 	//css events
 	var target_onClick = function(e: any) {
 		var target = e.target;
 		// If a child element is selected, event is controlled
-		if(target.classList.contains(Vanillanote.variables.noteName + "_eventChildren")) {
+		if(target.classList.contains(vn.variables.noteName + "_eventChildren")) {
 			target = target.parentNode;
 		}
 		var noteIndex = target.getAttribute("data-note-index");
 		if(!noteIndex) return;
 		// Add active CSS
-		target.classList.add(Vanillanote.variables.noteName + "_" + noteIndex + "_" + "on_active");
+		target.classList.add(vn.variables.noteName + "_" + noteIndex + "_" + "on_active");
 		// Remove active CSS after 0.1 seconds
 		setTimeout(function() {
-			target.classList.remove(Vanillanote.variables.noteName + "_" + noteIndex + "_" + "on_active");
+			target.classList.remove(vn.variables.noteName + "_" + noteIndex + "_" + "on_active");
 		}, 100);
 	};
 	var target_onMouseover = function(e: any) {
 		var target = e.target;
 		// If a child element is selected, event is controlled
-		if(target.classList.contains(Vanillanote.variables.noteName + "_eventChildren")) {
+		if(target.classList.contains(vn.variables.noteName + "_eventChildren")) {
 			target = target.parentNode;
 		}
 		var noteIndex = target.getAttribute("data-note-index");
 		if(!noteIndex) return;
-		target.classList.add(Vanillanote.variables.noteName + "_" + noteIndex + "_" + "on_mouseover");
+		target.classList.add(vn.variables.noteName + "_" + noteIndex + "_" + "on_mouseover");
 	}
 	var target_onMouseout = function(e: any) {
 		var target = e.target;
 		// If a child element is selected, event is controlled
-		if(target.classList.contains(Vanillanote.variables.noteName + "_eventChildren")) {
+		if(target.classList.contains(vn.variables.noteName + "_eventChildren")) {
 			target = target.parentNode;
 		}
 		var noteIndex = target.getAttribute("data-note-index");
 		if(!noteIndex) return;
-		target.classList.remove(Vanillanote.variables.noteName + "_" + noteIndex + "_" + "on_mouseover");
+		target.classList.remove(vn.variables.noteName + "_" + noteIndex + "_" + "on_mouseover");
 	};
 	var target_onTouchstart = function(e: any) {
 		var target = e.target;
 		// If a child element is selected, event is controlled
-		if(target.classList.contains(Vanillanote.variables.noteName + "_eventChildren")) {
+		if(target.classList.contains(vn.variables.noteName + "_eventChildren")) {
 			target = target.parentNode;
 		}
 		var noteIndex = target.getAttribute("data-note-index");
 		if(!noteIndex) return;
-		target.classList.add(Vanillanote.variables.noteName + "_" + noteIndex + "_" + "on_mouseover");
-		target.classList.remove(Vanillanote.variables.noteName + "_" + noteIndex + "_" + "on_mouseout");
+		target.classList.add(vn.variables.noteName + "_" + noteIndex + "_" + "on_mouseover");
+		target.classList.remove(vn.variables.noteName + "_" + noteIndex + "_" + "on_mouseout");
 	};
 	var target_onTouchend = function(e: any) {
 		var target = e.target;
 		// If a child element is selected, event is controlled
-		if(target.classList.contains(Vanillanote.variables.noteName + "_eventChildren")) {
+		if(target.classList.contains(vn.variables.noteName + "_eventChildren")) {
 			target = target.parentNode;
 		}
 		var noteIndex = target.getAttribute("data-note-index");
 		if(!noteIndex) return;
-		target.classList.add(Vanillanote.variables.noteName + "_" + noteIndex + "_" + "on_mouseout");
-		target.classList.remove(Vanillanote.variables.noteName + "_" + noteIndex + "_" + "on_mouseover");
+		target.classList.add(vn.variables.noteName + "_" + noteIndex + "_" + "on_mouseout");
+		target.classList.remove(vn.variables.noteName + "_" + noteIndex + "_" + "on_mouseover");
 	};
 	var doDecreaseTextareaHeight = function(textarea: any, noteIndex: number) {
 		// Stop if not in auto-scroll mode.
-		if(!Vanillanote.variables.useMobileActiveMode[noteIndex]) return;
+		if(!vn.variables.useMobileActiveMode[noteIndex]) return;
 		textarea.scrollIntoView({
 			behavior: 'smooth',
 			block: 'start',
@@ -4667,45 +4668,45 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	};
 	var doIncreaseTextareaHeight = function() {
 		// Restore the note size.
-		for(var i = 0; i < Vanillanote.elements.textareas.length; i++) {
+		for(var i = 0; i < vn.elements.textareas.length; i++) {
 			// Stop if not in auto-scroll mode.
-			if(!Vanillanote.variables.useMobileActiveMode[i]) continue;
-			increaseTextareaHeight(Vanillanote.elements.textareas[i]);
+			if(!vn.variables.useMobileActiveMode[i]) continue;
+			increaseTextareaHeight(vn.elements.textareas[i]);
 		}
 	};
 	var modifyTextareaScroll = function(textarea: any, noteIndex: number) {
 		// Stop if not in auto-scroll mode.
-		if(!Vanillanote.variables.useMobileActiveMode[noteIndex]) return;
+		if(!vn.variables.useMobileActiveMode[noteIndex]) return;
 		
-		if(Vanillanote.variables.preventChangeScroll > 0) {
-			Vanillanote.variables.preventChangeScroll--;
+		if(vn.variables.preventChangeScroll > 0) {
+			vn.variables.preventChangeScroll--;
 			return;	
 		}
-		if(Vanillanote.variables.isSelectionProgress) return;
-		Vanillanote.variables.isSelectionProgress = true;
+		if(vn.variables.isSelectionProgress) return;
+		vn.variables.isSelectionProgress = true;
 		// 0.05 seconds time out.
 		setTimeout(function() {
-			Vanillanote.variables.isSelectionProgress = false;
+			vn.variables.isSelectionProgress = false;
 			
 			//If there is unvalid selection, return.
 			if(!isValidSelection(noteIndex)) return;
 			
 			// The number of the middle element from the currently dragged elements.
-			var indexMiddleUnit = checkNumber(Vanillanote.variables.editDragUnitElements[noteIndex].length / 2) ?
-			Vanillanote.variables.editDragUnitElements[noteIndex].length / 2 - 1 : Math.floor(Vanillanote.variables.editDragUnitElements[noteIndex].length / 2);
+			var indexMiddleUnit = checkNumber(vn.variables.editDragUnitElements[noteIndex].length / 2) ?
+			vn.variables.editDragUnitElements[noteIndex].length / 2 - 1 : Math.floor(vn.variables.editDragUnitElements[noteIndex].length / 2);
 			// The total height of the currently dragged elements.
-			var heightSumDragUnitElements = (Vanillanote.variables.editDragUnitElements[noteIndex] as any)[(Vanillanote.variables.editDragUnitElements[noteIndex] as any).length - 1].offsetTop
-			- (Vanillanote.variables.editDragUnitElements[noteIndex] as any)[0].offsetTop
-			+ (Vanillanote.variables.editDragUnitElements[noteIndex] as any)[(Vanillanote.variables.editDragUnitElements[noteIndex] as any).length - 1].offsetHeight;
+			var heightSumDragUnitElements = (vn.variables.editDragUnitElements[noteIndex] as any)[(vn.variables.editDragUnitElements[noteIndex] as any).length - 1].offsetTop
+			- (vn.variables.editDragUnitElements[noteIndex] as any)[0].offsetTop
+			+ (vn.variables.editDragUnitElements[noteIndex] as any)[(vn.variables.editDragUnitElements[noteIndex] as any).length - 1].offsetHeight;
 			// If the total height of the currently dragged elements is larger than the current textarea's height, do not scroll. (With a margin of about 30px).
 			if(heightSumDragUnitElements > textarea.offsetHeight - 30) return;
 			// If any select box is open, do not scroll.
 			if(getCheckSelectBoxesOpened(noteIndex)) return;
-			if((Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
-				setElementScroll(textarea, Vanillanote.variables.editStartElements[noteIndex]);
+			if((vn.variables.editRanges[noteIndex] as any).collapsed) {
+				setElementScroll(textarea, vn.variables.editStartElements[noteIndex]);
 			}
 			else {
-				setElementScroll(textarea, Vanillanote.variables.editDragUnitElements[noteIndex][indexMiddleUnit]);
+				setElementScroll(textarea, vn.variables.editDragUnitElements[noteIndex][indexMiddleUnit]);
 			}
 					
 		}, 50);
@@ -4722,29 +4723,29 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			});
 			var noteIndex = getNoteIndex(mutationEl);
 			if(!noteIndex) return;
-			Vanillanote.variables.lastActiveNote = Number(noteIndex);
+			vn.variables.lastActiveNote = Number(noteIndex);
 			
 			// Does not record more than the recodeLimit number.
-			if(Vanillanote.variables.recodeNotes[noteIndex].length >= Vanillanote.variables.recodeLimit[noteIndex]) {
-				Vanillanote.variables.recodeNotes[noteIndex].shift();
-				Vanillanote.variables.recodeNotes[noteIndex].push((Vanillanote.elements.textareas[noteIndex] as any).cloneNode(true));
+			if(vn.variables.recodeNotes[noteIndex].length >= vn.variables.recodeLimit[noteIndex]) {
+				vn.variables.recodeNotes[noteIndex].shift();
+				vn.variables.recodeNotes[noteIndex].push((vn.elements.textareas[noteIndex] as any).cloneNode(true));
 			}
 			else {
-				Vanillanote.variables.recodeContings[noteIndex] = Vanillanote.variables.recodeContings[noteIndex] + 1;
+				vn.variables.recodeContings[noteIndex] = vn.variables.recodeContings[noteIndex] + 1;
 				// If a new change occurs in the middle of undoing, subsequent records are deleted.
-				if(Vanillanote.variables.recodeContings[noteIndex] < Vanillanote.variables.recodeNotes[noteIndex].length) {
-					Vanillanote.variables.recodeNotes[noteIndex].splice(Vanillanote.variables.recodeContings[noteIndex]);
+				if(vn.variables.recodeContings[noteIndex] < vn.variables.recodeNotes[noteIndex].length) {
+					vn.variables.recodeNotes[noteIndex].splice(vn.variables.recodeContings[noteIndex]);
 				}
-				Vanillanote.variables.recodeNotes[noteIndex].push((Vanillanote.elements.textareas[noteIndex] as any).cloneNode(true));
+				vn.variables.recodeNotes[noteIndex].push((vn.elements.textareas[noteIndex] as any).cloneNode(true));
 			}
 		}),
 		// Adjust note size according to window change.
 		window_onResize : function(e: any) {
 		 	// A delay of 0.05 second
-			if(!Vanillanote.variables.canEvents) return;
+			if(!vn.variables.canEvents) return;
 			onEventDisable("resize");
 			
-			for(var i = 0; i < Vanillanote.elements.tools.length; i++) {
+			for(var i = 0; i < vn.elements.tools.length; i++) {
 				// Adjust toolbar size.
 				setAllToolSize(i);
 				// Adjust the position of the tooltip.
@@ -4758,12 +4759,12 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		window_resizeViewport : function(e: any) {
 			if(!window.visualViewport) return;
 			//only height
-			if(Vanillanote.variables.lastScreenHeight === window.visualViewport.height) return;
+			if(vn.variables.lastScreenHeight === window.visualViewport.height) return;
 			//useMobileActive
 			var useMobileActiveConunt = 0;
-			for(var i = 0; i < Vanillanote.variables.useMobileActiveMode.length; i++) {
+			for(var i = 0; i < vn.variables.useMobileActiveMode.length; i++) {
 				// Stop if not in auto-scroll mode.
-				if(Vanillanote.variables.useMobileActiveMode[i]) useMobileActiveConunt++;
+				if(vn.variables.useMobileActiveMode[i]) useMobileActiveConunt++;
 			}
 			if(useMobileActiveConunt === 0) return;
 			
@@ -4771,7 +4772,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var isTextarea = false;
 			
 			while(textarea) {
-				if(textarea.tagName === (Vanillanote.variables.noteName+"-textarea").toUpperCase()) {
+				if(textarea.tagName === (vn.variables.noteName+"-textarea").toUpperCase()) {
 					isTextarea = true;
 					break;
 				}
@@ -4780,17 +4781,17 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				}
 			}
 			
-			if(isTextarea && Vanillanote.variables.lastScreenHeight! > window.visualViewport.height) {
+			if(isTextarea && vn.variables.lastScreenHeight! > window.visualViewport.height) {
 				var noteIndex = getNoteIndex(textarea);
-				var toolHeight = extractNumber(Vanillanote.elements.tools[noteIndex].style.height) ? extractNumber(Vanillanote.elements.tools[noteIndex].style.height) : 93.6;
-				Vanillanote.variables.mobileKeyboardExceptHeight = window.visualViewport.height - (toolHeight! / 2);
+				var toolHeight = extractNumber(vn.elements.tools[noteIndex].style.height) ? extractNumber(vn.elements.tools[noteIndex].style.height) : 93.6;
+				vn.variables.mobileKeyboardExceptHeight = window.visualViewport.height - (toolHeight! / 2);
 				doDecreaseTextareaHeight(textarea, noteIndex);
 			}
-			if(Vanillanote.variables.lastScreenHeight! < window.visualViewport.height) {
+			if(vn.variables.lastScreenHeight! < window.visualViewport.height) {
 				doIncreaseTextareaHeight();
 			}
 			
-			Vanillanote.variables.lastScreenHeight = window.visualViewport.height;
+			vn.variables.lastScreenHeight = window.visualViewport.height;
 		},
 		//==================================================================================
 		//note event
@@ -4799,10 +4800,10 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		toolToggleButton_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var icon: any = Vanillanote.elements.toolToggleButtons[noteIndex].firstChild;
+			var icon: any = vn.elements.toolToggleButtons[noteIndex].firstChild;
 			//toggle
-			Vanillanote.variables.toolToggles[noteIndex] = !Vanillanote.variables.toolToggles[noteIndex];
-			if(!Vanillanote.variables.toolToggles[noteIndex]) { //in case of open
+			vn.variables.toolToggles[noteIndex] = !vn.variables.toolToggles[noteIndex];
+			if(!vn.variables.toolToggles[noteIndex]) { //in case of open
 				icon.textContent = "arrow_drop_up";
 				// Adjust toolbar size.
 				setAllToolSize(noteIndex);
@@ -4816,7 +4817,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				// Adjust the position of the tooltip.
 				setAllToolTipPosition(noteIndex);
 			}
-			Vanillanote.variables.preventChangeScroll = 2;
+			vn.variables.preventChangeScroll = 2;
 			// It's too inconvenient if the cursor is caught again on mobile..
 			if(!isMobileDevice()) {
 				setOriginEditSelection(noteIndex);
@@ -4927,13 +4928,13 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			// Toggle the button
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.boldToggles[noteIndex] = !Vanillanote.variables.boldToggles[noteIndex];
+			vn.variables.boldToggles[noteIndex] = !vn.variables.boldToggles[noteIndex];
 			if(!isMobileDevice()) {
-				button_onToggle(Vanillanote.elements.boldButtons[noteIndex], Vanillanote.variables.boldToggles[noteIndex]);
+				button_onToggle(vn.elements.boldButtons[noteIndex], vn.variables.boldToggles[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -4949,13 +4950,13 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			// Toggle the button
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.underlineToggles[noteIndex] = !Vanillanote.variables.underlineToggles[noteIndex];
+			vn.variables.underlineToggles[noteIndex] = !vn.variables.underlineToggles[noteIndex];
 			if(!isMobileDevice()) {
-				button_onToggle(Vanillanote.elements.underlineButtons[noteIndex], Vanillanote.variables.underlineToggles[noteIndex]);
+				button_onToggle(vn.elements.underlineButtons[noteIndex], vn.variables.underlineToggles[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -4971,13 +4972,13 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			// Toggle the button
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.italicToggles[noteIndex] = !Vanillanote.variables.italicToggles[noteIndex];
+			vn.variables.italicToggles[noteIndex] = !vn.variables.italicToggles[noteIndex];
 			if(!isMobileDevice()) {
-				button_onToggle(Vanillanote.elements.italicButtons[noteIndex], Vanillanote.variables.italicToggles[noteIndex]);
+				button_onToggle(vn.elements.italicButtons[noteIndex], vn.variables.italicToggles[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -5106,16 +5107,16 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				closeAllModal(noteIndex);
 				return;
 			}
-			var attLinkValidCheckbox: any = Vanillanote.elements.attLinkValidCheckboxes[noteIndex];
+			var attLinkValidCheckbox: any = vn.elements.attLinkValidCheckboxes[noteIndex];
 			if(!attLinkValidCheckbox.checked) {
 				return;
 			}
-			var attLinkText: any = Vanillanote.elements.attLinkTexts[noteIndex];
-			var attLinkHref: any = Vanillanote.elements.attLinkHrefs[noteIndex];
-			var attIsblank: any = Vanillanote.elements.attLinkIsBlankCheckboxes[noteIndex];
+			var attLinkText: any = vn.elements.attLinkTexts[noteIndex];
+			var attLinkHref: any = vn.elements.attLinkHrefs[noteIndex];
+			var attIsblank: any = vn.elements.attLinkIsBlankCheckboxes[noteIndex];
 			
 			//No dragging > insert, dragging > modify
-			if((Vanillanote.variables.editRanges as any)[noteIndex].collapsed) {
+			if((vn.variables.editRanges as any)[noteIndex].collapsed) {
 				var tempEl = document.createElement("A");
 				var tempNode = document.createTextNode(attLinkText.value);
 				tempEl.append(tempNode);
@@ -5123,7 +5124,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				tempEl.setAttribute("class", getClassName(noteIndex, "linker"));
 				tempEl.setAttribute("style", getCssTextFromObject(getObjectNoteCss(noteIndex)));
 				if(attIsblank.checked) tempEl.setAttribute("target","_blank");
-				(Vanillanote.variables.editRanges as any)[noteIndex].insertNode(tempEl);
+				(vn.variables.editRanges as any)[noteIndex].insertNode(tempEl);
                 setNewSelection(
                     tempEl,
                     1,
@@ -5148,8 +5149,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		attLinkTooltipEditButton_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var previousElements = getPreviousElementsUntilNotTag(Vanillanote.variables.editStartElements[noteIndex], "A");
-			var nextElements = getNextElementsUntilNotTag(Vanillanote.variables.editStartElements[noteIndex], "A");
+			var previousElements = getPreviousElementsUntilNotTag(vn.variables.editStartElements[noteIndex], "A");
+			var nextElements = getNextElementsUntilNotTag(vn.variables.editStartElements[noteIndex], "A");
 			var startEl = previousElements[previousElements.length - 1];
 			var endEl = nextElements[nextElements.length - 1];
 			
@@ -5170,8 +5171,8 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		attLinkTooltipUnlinkButton_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var previousElements = getPreviousElementsUntilNotTag(Vanillanote.variables.editStartElements[noteIndex], "A");
-			var nextElements = getNextElementsUntilNotTag(Vanillanote.variables.editStartElements[noteIndex], "A");
+			var previousElements = getPreviousElementsUntilNotTag(vn.variables.editStartElements[noteIndex], "A");
+			var nextElements = getNextElementsUntilNotTag(vn.variables.editStartElements[noteIndex], "A");
 			var startEl = previousElements[previousElements.length - 1];
 			var endEl = nextElements[nextElements.length - 1];
 			
@@ -5205,10 +5206,10 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			// Open modal background
 			var displayBlock = getId(noteIndex, "on_display_block");
 			var displayNone = getId(noteIndex, "on_display_none");
-			Vanillanote.elements.backModals[noteIndex].classList.remove(displayNone);
-			Vanillanote.elements.backModals[noteIndex].classList.add(displayBlock);
-			Vanillanote.elements.attFileModals[noteIndex].classList.remove(displayNone);
-			Vanillanote.elements.attFileModals[noteIndex].classList.add(displayBlock);
+			vn.elements.backModals[noteIndex].classList.remove(displayNone);
+			vn.elements.backModals[noteIndex].classList.add(displayBlock);
+			vn.elements.attFileModals[noteIndex].classList.remove(displayNone);
+			vn.elements.attFileModals[noteIndex].classList.add(displayBlock);
 		},
     	//==================================================================================
 		//modal att file
@@ -5218,7 +5219,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	    attFileUploadButton_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.elements.attFileUploads[noteIndex].click();
+			vn.elements.attFileUploads[noteIndex].click();
 	    },
 	    //modal att file upload div
 	    attFileUploadDiv_onDragover : function(e: any) {
@@ -5241,7 +5242,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				return 0;
 			});
 	        for(var i = 0; i < files.length; i++){
-	            (Vanillanote.variables.attTempFiles as any)[noteIndex][getUUID()] = files[i];
+	            (vn.variables.attTempFiles as any)[noteIndex][getUUID()] = files[i];
 	        }
 	      	// Leave attTempFiles with only valid files.
 	        setAttTempFileValid(noteIndex);
@@ -5253,12 +5254,12 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			if(!uuid) return;
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-	    	delete Vanillanote.variables.attTempFiles[noteIndex][uuid]
+	    	delete vn.variables.attTempFiles[noteIndex][uuid]
 			e.target.remove();
 	    	
-	    	if(Vanillanote.elements.attFileUploadDivs[noteIndex].childNodes.length <= 0) {
-	    		Vanillanote.elements.attFileUploadDivs[noteIndex].textContent = Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attFileUploadDiv;
-	    		Vanillanote.elements.attFileUploadDivs[noteIndex].style.lineHeight = Vanillanote.variables.sizeRates[noteIndex] * 130 + "px";
+	    	if(vn.elements.attFileUploadDivs[noteIndex].childNodes.length <= 0) {
+	    		vn.elements.attFileUploadDivs[noteIndex].textContent = vn.languageSet[vn.variables.languages[noteIndex]].attFileUploadDiv;
+	    		vn.elements.attFileUploadDivs[noteIndex].style.lineHeight = vn.variables.sizeRates[noteIndex] * 130 + "px";
 	    	}
 	    },
 		//modal att file upload
@@ -5276,7 +5277,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				return 0;
 			});
 	        for(var i = 0; i < files.length; i++){
-	            (Vanillanote.variables.attTempFiles as any)[noteIndex][getUUID()] = files[i];
+	            (vn.variables.attTempFiles as any)[noteIndex][getUUID()] = files[i];
 	        }
 	      	// Leave attTempFiles with only valid files.
 	        setAttTempFileValid(noteIndex);
@@ -5302,16 +5303,16 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				closeAllModal(noteIndex);
 				return;
 			}
-			if(!Vanillanote.variables.editStartUnitElements[noteIndex]) {
+			if(!vn.variables.editStartUnitElements[noteIndex]) {
 				closeAllModal(noteIndex);
 				return;
 			}
-			var keys = Object.keys(Vanillanote.variables.attTempFiles[noteIndex]);
+			var keys = Object.keys(vn.variables.attTempFiles[noteIndex]);
 			if(keys.length <= 0) {
 				closeAllModal(noteIndex);
 				return;
 			}
-			var editStartUnitElements: any = Vanillanote.variables.editStartUnitElements[noteIndex];
+			var editStartUnitElements: any = vn.variables.editStartUnitElements[noteIndex];
 			var tempEl1;
 			var tempEl2;
 			var selectEl;
@@ -5326,17 +5327,17 @@ function createVanillanote(Vanillanote: Vanillanote) {
                             "class" : getClassName(noteIndex, "downloader"),
 							"uuid" : keys[i],
 							"data-note-index" : noteIndex,
-							"href" : URL.createObjectURL(Vanillanote.variables.attTempFiles[noteIndex][keys[i]]),
-							"download" : Vanillanote.variables.attTempFiles[noteIndex][keys[i]].name,
+							"href" : URL.createObjectURL(vn.variables.attTempFiles[noteIndex][keys[i]]),
+							"download" : vn.variables.attTempFiles[noteIndex][keys[i]].name,
 							"style" : getCssTextFromObject(getObjectNoteCss(noteIndex)),
 						}
 					);
-				tempEl2.innerText = "download : "+Vanillanote.variables.attTempFiles[noteIndex][keys[i]].name;
+				tempEl2.innerText = "download : "+vn.variables.attTempFiles[noteIndex][keys[i]].name;
 				tempEl1.appendChild(tempEl2)
 				editStartUnitElements.parentNode.insertBefore(tempEl1, editStartUnitElements.nextSibling);
 				
 				// Save attach file object
-				Vanillanote.variables.attFiles[noteIndex][keys[i]] = Vanillanote.variables.attTempFiles[noteIndex][keys[i]];
+				vn.variables.attFiles[noteIndex][keys[i]] = vn.variables.attTempFiles[noteIndex][keys[i]];
 				if(i === keys.length - 1) selectEl = tempEl1;
 			}
 			closeAllModal(noteIndex);
@@ -5365,10 +5366,10 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			// Open modal background
 			var displayBlock = getId(noteIndex, "on_display_block");
 			var displayNone = getId(noteIndex, "on_display_none");
-			Vanillanote.elements.backModals[noteIndex].classList.remove(displayNone);
-			Vanillanote.elements.backModals[noteIndex].classList.add(displayBlock);
-			Vanillanote.elements.attImageModals[noteIndex].classList.remove(displayNone);
-			Vanillanote.elements.attImageModals[noteIndex].classList.add(displayBlock);
+			vn.elements.backModals[noteIndex].classList.remove(displayNone);
+			vn.elements.backModals[noteIndex].classList.add(displayBlock);
+			vn.elements.attImageModals[noteIndex].classList.remove(displayNone);
+			vn.elements.attImageModals[noteIndex].classList.add(displayBlock);
 		},
     	//==================================================================================
 		//modal att image
@@ -5386,7 +5387,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	        if(!noteIndex) return;
 	        var files = Array.from(e.dataTransfer.files);
 	        for(var i = 0; i < files.length; i++){
-	            (Vanillanote.variables.attTempImages as any)[noteIndex][getUUID()] = files[i];
+	            (vn.variables.attTempImages as any)[noteIndex][getUUID()] = files[i];
 	        }
 	      	// Leave attTempImages with only valid files.
 	        setAttTempImageValid(noteIndex);
@@ -5396,21 +5397,21 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	    attImageUploadButtonAndView_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.elements.attImageUploads[noteIndex].click();
+			vn.elements.attImageUploads[noteIndex].click();
 	    },
 		//modal att image view pre button
 		attImageViewPreButtion_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var scrollAmount = Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].offsetWidth / 1.5 + 10;
-			Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].scrollLeft -= scrollAmount;
+			var scrollAmount = vn.elements.attImageUploadButtonAndViews[noteIndex].offsetWidth / 1.5 + 10;
+			vn.elements.attImageUploadButtonAndViews[noteIndex].scrollLeft -= scrollAmount;
 		},
 		//modal att image view next button
 		attImageViewNextButtion_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var scrollAmount = Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].offsetWidth / 1.5 + 10;
-			Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].scrollLeft += scrollAmount;
+			var scrollAmount = vn.elements.attImageUploadButtonAndViews[noteIndex].offsetWidth / 1.5 + 10;
+			vn.elements.attImageUploadButtonAndViews[noteIndex].scrollLeft += scrollAmount;
 		},
 		//modal att image upload
 		attImageUpload_onInput : function(e: any) {
@@ -5418,7 +5419,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			if(!noteIndex) return;
 			var files = Array.from(e.target.files);
 	        for(var i = 0; i < files.length; i++){
-	            (Vanillanote.variables.attTempImages as any)[noteIndex][getUUID()] = files[i];
+	            (vn.variables.attTempImages as any)[noteIndex][getUUID()] = files[i];
 	        }
 	      	// Leave attTempImages with only valid files.
 	        setAttTempImageValid(noteIndex);
@@ -5435,17 +5436,17 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			if(!noteIndex) return;
 			var url = e.target.value;
 			if(url) {
-		       	Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].replaceChildren();
+		       	vn.elements.attImageUploadButtonAndViews[noteIndex].replaceChildren();
 	        	const tempEl = document.createElement("img");
 	        	tempEl.src = url;
 	        	tempEl.style.width = "auto";
 	        	tempEl.style.height = "100%";
 	        	tempEl.style.display = "inline-block";
 	        	tempEl.style.margin = "0 5px"
-		       	Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].appendChild(tempEl);
+		       	vn.elements.attImageUploadButtonAndViews[noteIndex].appendChild(tempEl);
 			}
 			else {
-		    	Vanillanote.elements.attImageUploadButtonAndViews[noteIndex].textContent = Vanillanote.languageSet[Vanillanote.variables.languages[noteIndex]].attImageUploadButtonAndView;
+		    	vn.elements.attImageUploadButtonAndViews[noteIndex].textContent = vn.languageSet[vn.variables.languages[noteIndex]].attImageUploadButtonAndView;
 			}
 		},
 		attImageURL_onBlur : function(e: any) {
@@ -5459,7 +5460,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				Sequentially insert <img url/> into startElement
 				Reset attTempImages, attImageUploadButtonAndView, attImageURL and close modal
 				If it's uload method:
-					Store files in Vanillanote.variables.attImages
+					Store files in vn.variables.attImages
 			If there is no range:
 				Reset attTempImages, attImageUploadButtonAndView, attImageURL and close modal
 			*/
@@ -5469,14 +5470,14 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				closeAllModal(noteIndex);
 				return;
 			}
-			if(!Vanillanote.variables.editStartUnitElements[noteIndex]) {
+			if(!vn.variables.editStartUnitElements[noteIndex]) {
 				closeAllModal(noteIndex);
 				return;
 			}
 			
-			if((Vanillanote.elements.attImageURLs[noteIndex] as any).value) {
-				var url = (Vanillanote.elements.attImageURLs[noteIndex] as any).value;
-				var editStartUnitElements: any = Vanillanote.variables.editStartUnitElements[noteIndex];
+			if((vn.elements.attImageURLs[noteIndex] as any).value) {
+				var url = (vn.elements.attImageURLs[noteIndex] as any).value;
+				var editStartUnitElements: any = vn.variables.editStartUnitElements[noteIndex];
 				var tempEl1;
 				var tempEl2;
 				var viewerStyle = "width: 100%; overflow:hidden;"
@@ -5508,9 +5509,9 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				return;
 			}
 			
-			var keys = Object.keys(Vanillanote.variables.attTempImages[noteIndex]);
+			var keys = Object.keys(vn.variables.attTempImages[noteIndex]);
 			if(keys.length > 0) {
-				var editStartUnitElements: any = Vanillanote.variables.editStartUnitElements[noteIndex];
+				var editStartUnitElements: any = vn.variables.editStartUnitElements[noteIndex];
 				var tempEl1;
 				var tempEl2;
 				var tempFile;
@@ -5519,7 +5520,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				
 				for(var i = keys.length - 1; i >= 0; i--) {
 					// Save image file object
-					Vanillanote.variables.attImages[noteIndex][keys[i]] = Vanillanote.variables.attTempImages[noteIndex][keys[i]];
+					vn.variables.attImages[noteIndex][keys[i]] = vn.variables.attTempImages[noteIndex][keys[i]];
 					
 					tempEl1 = document.createElement(editStartUnitElements.tagName);
 					tempEl2 = getElement(
@@ -5530,7 +5531,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 								"class" : getClassName(noteIndex, "image_viewer"),
 								"uuid" : keys[i],
 								"data-note-index" : noteIndex,
-								"src" : URL.createObjectURL(Vanillanote.variables.attImages[noteIndex][keys[i]]),
+								"src" : URL.createObjectURL(vn.variables.attImages[noteIndex][keys[i]]),
 								"style" : viewerStyle,
 								"title" : "",
 							}
@@ -5569,15 +5570,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			
 			var displayBlock = getId(noteIndex, "on_display_block");
 			var displayNone = getId(noteIndex, "on_display_none");
-			Vanillanote.elements.backModals[noteIndex].classList.remove(displayNone);
-			Vanillanote.elements.backModals[noteIndex].classList.add(displayBlock);
-			Vanillanote.elements.attVideoModals[noteIndex].classList.remove(displayNone);
-			Vanillanote.elements.attVideoModals[noteIndex].classList.add(displayBlock);
+			vn.elements.backModals[noteIndex].classList.remove(displayNone);
+			vn.elements.backModals[noteIndex].classList.add(displayBlock);
+			vn.elements.attVideoModals[noteIndex].classList.remove(displayNone);
+			vn.elements.attVideoModals[noteIndex].classList.add(displayBlock);
 
 			//modal setting
-			(Vanillanote.elements.attVideoEmbedIds[noteIndex] as any).value = "";
-			(Vanillanote.elements.attVideoWidthes[noteIndex] as any).value = 100;
-			(Vanillanote.elements.attVideoHeights[noteIndex] as any).value = 500;
+			(vn.elements.attVideoEmbedIds[noteIndex] as any).value = "";
+			(vn.elements.attVideoWidthes[noteIndex] as any).value = 100;
+			(vn.elements.attVideoHeights[noteIndex] as any).value = 500;
 
 			validCheckAttVideo(noteIndex);
 		},
@@ -5636,24 +5637,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				closeAllModal(noteIndex);
 				return;
 			}
-			var attVideoValidCheckbox: any = Vanillanote.elements.attVideoValidCheckboxes[noteIndex];
+			var attVideoValidCheckbox: any = vn.elements.attVideoValidCheckboxes[noteIndex];
 			if(!attVideoValidCheckbox.checked) {
 				return;
 			}
 
-			if(!Vanillanote.variables.editStartUnitElements[noteIndex]) {
+			if(!vn.variables.editStartUnitElements[noteIndex]) {
 				closeAllModal(noteIndex);
 				return;
 			}
 
-			if((Vanillanote.elements.attVideoEmbedIds[noteIndex] as any).value) {
-				var src = "https://www.youtube.com/embed/" + (Vanillanote.elements.attVideoEmbedIds[noteIndex] as any).value;
-				var editStartUnitElements: any = Vanillanote.variables.editStartUnitElements[noteIndex];
+			if((vn.elements.attVideoEmbedIds[noteIndex] as any).value) {
+				var src = "https://www.youtube.com/embed/" + (vn.elements.attVideoEmbedIds[noteIndex] as any).value;
+				var editStartUnitElements: any = vn.variables.editStartUnitElements[noteIndex];
 				var tempEl1;
 				var tempEl2;
 				var viewerStyle = "overflow:hidden;"
-									+ "width:" + (Vanillanote.elements.attVideoWidthes[noteIndex] as any).value + "%;"
-									+ "height:" + (Vanillanote.elements.attVideoHeights[noteIndex] as any).value + "px;";
+									+ "width:" + (vn.elements.attVideoWidthes[noteIndex] as any).value + "%;"
+									+ "height:" + (vn.elements.attVideoHeights[noteIndex] as any).value + "px;";
 			
 				tempEl1 = document.createElement(editStartUnitElements.tagName);
 				tempEl2 = getElement(
@@ -5710,61 +5711,61 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		attImageAndVideoTooltipFloatRadioNone_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var imgNode: any = (Vanillanote.variables.editStartNodes[noteIndex] as any).cloneNode(true);
+			var imgNode: any = (vn.variables.editStartNodes[noteIndex] as any).cloneNode(true);
 			if(imgNode.tagName !== "IMG" && imgNode.tagName !== "IFRAME") return;
 			imgNode.style.float = "none";
-			(Vanillanote.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (Vanillanote.variables.editStartNodes[noteIndex] as any));
-			Vanillanote.variables.editStartNodes[noteIndex] = imgNode;
+			(vn.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (vn.variables.editStartNodes[noteIndex] as any));
+			vn.variables.editStartNodes[noteIndex] = imgNode;
 		},
 		//att image tooltip float radio left input event
 		attImageAndVideoTooltipFloatRadioLeft_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var imgNode: any = (Vanillanote.variables.editStartNodes[noteIndex] as any).cloneNode(true);
+			var imgNode: any = (vn.variables.editStartNodes[noteIndex] as any).cloneNode(true);
 			if(imgNode.tagName !== "IMG" && imgNode.tagName !== "IFRAME") return;
 			imgNode.style.float = "left";
-			(Vanillanote.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (Vanillanote.variables.editStartNodes[noteIndex] as any));
-			Vanillanote.variables.editStartNodes[noteIndex] = imgNode;
+			(vn.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (vn.variables.editStartNodes[noteIndex] as any));
+			vn.variables.editStartNodes[noteIndex] = imgNode;
 		},
 		//att image tooltip float radio right input event
 		attImageAndVideoTooltipFloatRadioRight_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var imgNode: any = (Vanillanote.variables.editStartNodes[noteIndex] as any).cloneNode(true);
+			var imgNode: any = (vn.variables.editStartNodes[noteIndex] as any).cloneNode(true);
 			if(imgNode.tagName !== "IMG" && imgNode.tagName !== "IFRAME") return;
 			imgNode.style.float = "right";
-			(Vanillanote.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (Vanillanote.variables.editStartNodes[noteIndex] as any));
-			Vanillanote.variables.editStartNodes[noteIndex] = imgNode;
+			(vn.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (vn.variables.editStartNodes[noteIndex] as any));
+			vn.variables.editStartNodes[noteIndex] = imgNode;
 		},
 		//att image tooltip shape square radio input event
 		attImageAndVideoTooltipShapeRadioSquare_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var imgNode: any = Vanillanote.variables.editStartNodes[noteIndex];
+			var imgNode: any = vn.variables.editStartNodes[noteIndex];
 			if(imgNode.tagName !== "IMG" && imgNode.tagName !== "IFRAME") return;
 			imgNode.style.removeProperty("border-radius");
-			(Vanillanote.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (Vanillanote.variables.editStartNodes[noteIndex] as any));
-			Vanillanote.variables.editStartNodes[noteIndex] = imgNode;
+			(vn.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (vn.variables.editStartNodes[noteIndex] as any));
+			vn.variables.editStartNodes[noteIndex] = imgNode;
 		},
 		//att image tooltip shape radius radio input event
 		attImageAndVideoTooltipShapeRadioRadius_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var imgNode: any = Vanillanote.variables.editStartNodes[noteIndex];
+			var imgNode: any = vn.variables.editStartNodes[noteIndex];
 			if(imgNode.tagName !== "IMG" && imgNode.tagName !== "IFRAME") return;
 			imgNode.style.borderRadius = "5%";
-			(Vanillanote.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (Vanillanote.variables.editStartNodes[noteIndex] as any));
-			Vanillanote.variables.editStartNodes[noteIndex] = imgNode;
+			(vn.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (vn.variables.editStartNodes[noteIndex] as any));
+			vn.variables.editStartNodes[noteIndex] = imgNode;
 		},
 		//att image tooltip shape circle radio input event
 		attImageAndVideoTooltipShapeRadioCircle_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			var imgNode: any = Vanillanote.variables.editStartNodes[noteIndex];
+			var imgNode: any = vn.variables.editStartNodes[noteIndex];
 			if(imgNode.tagName !== "IMG" && imgNode.tagName !== "IFRAME") return;
 			imgNode.style.borderRadius = "50%";
-			(Vanillanote.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (Vanillanote.variables.editStartNodes[noteIndex] as any));
-			Vanillanote.variables.editStartNodes[noteIndex] = imgNode;
+			(vn.variables.editStartNodes[noteIndex] as any).parentNode.replaceChild(imgNode, (vn.variables.editStartNodes[noteIndex] as any));
+			vn.variables.editStartNodes[noteIndex] = imgNode;
 		},
 		
 		//==================================================================================
@@ -5773,7 +5774,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -5794,26 +5795,26 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				e.target.value = "";
 				return;
 			}
-			Vanillanote.variables.fontSizes[noteIndex] = inputValue;
+			vn.variables.fontSizes[noteIndex] = inputValue;
 		},
 		fontSizeInput_onBlur : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!e.target.value) {
-				e.target.value = Vanillanote.variables.fontSizes[noteIndex];
+				e.target.value = vn.variables.fontSizes[noteIndex];
 			}
 			var inputValueNum = Number(e.target.value);
 			if(inputValueNum > 120) {
 				e.target.value = "120";
-				Vanillanote.variables.fontSizes[noteIndex] = e.target.value;
+				vn.variables.fontSizes[noteIndex] = e.target.value;
 				return;
 			}
 			if(inputValueNum < 6) {
 				e.target.value = "6";
-				Vanillanote.variables.fontSizes[noteIndex] = e.target.value;
+				vn.variables.fontSizes[noteIndex] = e.target.value;
 				return;
 			}
-			Vanillanote.variables.fontSizes[noteIndex] = e.target.value;
+			vn.variables.fontSizes[noteIndex] = e.target.value;
 		},
 		
 		//==================================================================================
@@ -5822,7 +5823,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -5843,28 +5844,28 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				e.target.value = "";
 				return;
 			}
-			Vanillanote.variables.letterSpacings[noteIndex] = inputValue;
+			vn.variables.letterSpacings[noteIndex] = inputValue;
 		},
 		letterSpacingInput_onBlur : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!e.target.value) {
 				e.target.value = "0";
-				Vanillanote.variables.letterSpacings[noteIndex] = e.target.value;
+				vn.variables.letterSpacings[noteIndex] = e.target.value;
 				return;
 			}
 			var inputValueNum = Number(e.target.value);
 			if(inputValueNum > 30) {
 				e.target.value = "30";
-				Vanillanote.variables.letterSpacings[noteIndex] = e.target.value;
+				vn.variables.letterSpacings[noteIndex] = e.target.value;
 				return;
 			}
 			if(inputValueNum < -5) {
 				e.target.value = "-5";
-				Vanillanote.variables.letterSpacings[noteIndex] = e.target.value;
+				vn.variables.letterSpacings[noteIndex] = e.target.value;
 				return;
 			}
-			Vanillanote.variables.letterSpacings[noteIndex] = e.target.value;
+			vn.variables.letterSpacings[noteIndex] = e.target.value;
 		},
 		
 		//==================================================================================
@@ -5875,7 +5876,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -5896,26 +5897,26 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				e.target.value = "";
 				return;
 			}
-			Vanillanote.variables.lineHeights[noteIndex] = e.target.value;
+			vn.variables.lineHeights[noteIndex] = e.target.value;
 		},
 		lineHeightInput_onBlur : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!e.target.value) {
-				e.target.value = Vanillanote.variables.lineHeights[noteIndex];
+				e.target.value = vn.variables.lineHeights[noteIndex];
 			}
 			var inputValueNum = Number(e.target.value);
 			if(inputValueNum > 150) {
 				e.target.value = "150";
-				Vanillanote.variables.lineHeights[noteIndex] = e.target.value;
+				vn.variables.lineHeights[noteIndex] = e.target.value;
 				return;
 			}
 			if(inputValueNum < 6) {
 				e.target.value = "6";
-				Vanillanote.variables.lineHeights[noteIndex] = e.target.value;
+				vn.variables.lineHeights[noteIndex] = e.target.value;
 				return;
 			}
-			Vanillanote.variables.lineHeights[noteIndex] = e.target.value;
+			vn.variables.lineHeights[noteIndex] = e.target.value;
 		},
 		
 		//==================================================================================
@@ -5952,24 +5953,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(inputValue)) {
-				inputValue = Vanillanote.variables.colorTextRs[noteIndex];
+				inputValue = vn.variables.colorTextRs[noteIndex];
 				e.target.value = inputValue;
 				return;
 			}
 			if(inputValue.length !== 2) return;
-			Vanillanote.variables.colorTextRs[noteIndex] = inputValue;
-			Vanillanote.elements.colorText0s[noteIndex].style.backgroundColor = "#" + Vanillanote.variables.colorTextRs[noteIndex] +  Vanillanote.variables.colorTextGs[noteIndex] +  Vanillanote.variables.colorTextBs[noteIndex];
+			vn.variables.colorTextRs[noteIndex] = inputValue;
+			vn.elements.colorText0s[noteIndex].style.backgroundColor = "#" + vn.variables.colorTextRs[noteIndex] +  vn.variables.colorTextGs[noteIndex] +  vn.variables.colorTextBs[noteIndex];
 		},
 		colorTextRInput_onBlur : function(e: any) {
 			var value = e.target.value;
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(value)) {
-				e.target.value = Vanillanote.variables.colorTextRs[noteIndex];
+				e.target.value = vn.variables.colorTextRs[noteIndex];
 				return;
 			}
 			if(value.length !== 2) {
-				e.target.value = Vanillanote.variables.colorTextRs[noteIndex];
+				e.target.value = vn.variables.colorTextRs[noteIndex];
 			}
 		},
 		//colorText G Input event
@@ -5981,24 +5982,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(inputValue)) {
-				inputValue = Vanillanote.variables.colorTextGs[noteIndex];
+				inputValue = vn.variables.colorTextGs[noteIndex];
 				e.target.value = inputValue;
 				return;
 			}
 			if(inputValue.length !== 2) return;
-			Vanillanote.variables.colorTextGs[noteIndex] = inputValue;
-			Vanillanote.elements.colorText0s[noteIndex].style.backgroundColor = "#" + Vanillanote.variables.colorTextRs[noteIndex] +  Vanillanote.variables.colorTextGs[noteIndex] +  Vanillanote.variables.colorTextBs[noteIndex];
+			vn.variables.colorTextGs[noteIndex] = inputValue;
+			vn.elements.colorText0s[noteIndex].style.backgroundColor = "#" + vn.variables.colorTextRs[noteIndex] +  vn.variables.colorTextGs[noteIndex] +  vn.variables.colorTextBs[noteIndex];
 		},
 		colorTextGInput_onBlur : function(e: any) {
 			var value = e.target.value;
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(value)) {
-				e.target.value = Vanillanote.variables.colorTextGs[noteIndex];
+				e.target.value = vn.variables.colorTextGs[noteIndex];
 				return;
 			}
 			if(value.length !== 2) {
-				e.target.value = Vanillanote.variables.colorTextGs[noteIndex];
+				e.target.value = vn.variables.colorTextGs[noteIndex];
 			}
 		},
 		//colorText B Input event
@@ -6010,24 +6011,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(inputValue)) {
-				inputValue = Vanillanote.variables.colorTextBs[noteIndex];
+				inputValue = vn.variables.colorTextBs[noteIndex];
 				e.target.value = inputValue;
 				return;
 			}
 			if(inputValue.length !== 2) return;
-			Vanillanote.variables.colorTextBs[noteIndex] = inputValue;
-			Vanillanote.elements.colorText0s[noteIndex].style.backgroundColor = "#" + Vanillanote.variables.colorTextRs[noteIndex] +  Vanillanote.variables.colorTextGs[noteIndex] +  Vanillanote.variables.colorTextBs[noteIndex];
+			vn.variables.colorTextBs[noteIndex] = inputValue;
+			vn.elements.colorText0s[noteIndex].style.backgroundColor = "#" + vn.variables.colorTextRs[noteIndex] +  vn.variables.colorTextGs[noteIndex] +  vn.variables.colorTextBs[noteIndex];
 		},
 		colorTextBInput_onBlur : function(e: any) {
 			var value = e.target.value;
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(value)) {
-				e.target.value = Vanillanote.variables.colorTextBs[noteIndex];
+				e.target.value = vn.variables.colorTextBs[noteIndex];
 				return;
 			}
 			if(value.length !== 2) {
-				e.target.value = Vanillanote.variables.colorTextBs[noteIndex];
+				e.target.value = vn.variables.colorTextBs[noteIndex];
 			}
 		},
 		//colorText Opacity Input event
@@ -6042,7 +6043,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkRealNumber(inputValue)) {
-				inputValue = Vanillanote.variables.colorTextOs[noteIndex];
+				inputValue = vn.variables.colorTextOs[noteIndex];
 				e.target.value = inputValue;
 				return;
 			}
@@ -6057,30 +6058,30 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				e.target.value = Math.round(inputValue * 10) / 10;
 			}
 			
-			Vanillanote.variables.colorTextOs[noteIndex] = inputValue;
-			Vanillanote.elements.colorText0s[noteIndex].style.opacity = Vanillanote.variables.colorTextOs[noteIndex];
+			vn.variables.colorTextOs[noteIndex] = inputValue;
+			vn.elements.colorText0s[noteIndex].style.opacity = vn.variables.colorTextOs[noteIndex];
 		},
 		colorTextOpacityInput_onBlur : function(e: any) {
 			var value = e.target.value;
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkRealNumber(value)) {
-				e.target.value = Vanillanote.variables.colorTextOs[noteIndex];
+				e.target.value = vn.variables.colorTextOs[noteIndex];
 			}
 		},
 		//colorText0 event
 		colorText0_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorTextRGBs[noteIndex] = "#" + Vanillanote.variables.colorTextRs[noteIndex] +  Vanillanote.variables.colorTextGs[noteIndex] +  Vanillanote.variables.colorTextBs[noteIndex];
-			Vanillanote.variables.colorTextOpacitys[noteIndex] = Vanillanote.variables.colorTextOs[noteIndex];
+			vn.variables.colorTextRGBs[noteIndex] = "#" + vn.variables.colorTextRs[noteIndex] +  vn.variables.colorTextGs[noteIndex] +  vn.variables.colorTextBs[noteIndex];
+			vn.variables.colorTextOpacitys[noteIndex] = vn.variables.colorTextOs[noteIndex];
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-				 = getRGBAFromHex(Vanillanote.variables.colorTextRGBs[noteIndex], Vanillanote.variables.colorTextOpacitys[noteIndex] === "0" ? 1 : Vanillanote.variables.colorTextOpacitys[noteIndex]);
+				(vn.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+				 = getRGBAFromHex(vn.variables.colorTextRGBs[noteIndex], vn.variables.colorTextOpacitys[noteIndex] === "0" ? 1 : vn.variables.colorTextOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6093,15 +6094,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorText1_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color14[noteIndex]);
-			Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+			vn.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color14[noteIndex]);
+			vn.variables.colorTextOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorTextRGBs[noteIndex], Vanillanote.variables.colorTextOpacitys[noteIndex]);
+				(vn.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorTextRGBs[noteIndex], vn.variables.colorTextOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6114,15 +6115,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorText2_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color15[noteIndex]);
-			Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+			vn.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color15[noteIndex]);
+			vn.variables.colorTextOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorTextRGBs[noteIndex], Vanillanote.variables.colorTextOpacitys[noteIndex]);
+				(vn.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorTextRGBs[noteIndex], vn.variables.colorTextOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6135,15 +6136,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorText3_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color16[noteIndex]);
-			Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+			vn.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color16[noteIndex]);
+			vn.variables.colorTextOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorTextRGBs[noteIndex], Vanillanote.variables.colorTextOpacitys[noteIndex]);
+				(vn.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorTextRGBs[noteIndex], vn.variables.colorTextOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6156,15 +6157,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorText4_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color17[noteIndex]);
-			Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+			vn.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color17[noteIndex]);
+			vn.variables.colorTextOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorTextRGBs[noteIndex], Vanillanote.variables.colorTextOpacitys[noteIndex]);
+				(vn.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorTextRGBs[noteIndex], vn.variables.colorTextOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6177,15 +6178,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorText5_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color18[noteIndex]);
-			Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+			vn.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color18[noteIndex]);
+			vn.variables.colorTextOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorTextRGBs[noteIndex], Vanillanote.variables.colorTextOpacitys[noteIndex]);
+				(vn.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorTextRGBs[noteIndex], vn.variables.colorTextOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6198,15 +6199,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorText6_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color19[noteIndex]);
-			Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+			vn.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color19[noteIndex]);
+			vn.variables.colorTextOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorTextRGBs[noteIndex], Vanillanote.variables.colorTextOpacitys[noteIndex]);
+				(vn.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorTextRGBs[noteIndex], vn.variables.colorTextOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6219,15 +6220,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorText7_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color20[noteIndex]);
-			Vanillanote.variables.colorTextOpacitys[noteIndex] = "1";
+			vn.variables.colorTextRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color20[noteIndex]);
+			vn.variables.colorTextOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorTextRGBs[noteIndex], Vanillanote.variables.colorTextOpacitys[noteIndex]);
+				(vn.elements.colorTextSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorTextRGBs[noteIndex], vn.variables.colorTextOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6260,24 +6261,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(inputValue)) {
-				inputValue = Vanillanote.variables.colorBackRs[noteIndex];
+				inputValue = vn.variables.colorBackRs[noteIndex];
 				e.target.value = inputValue;
 				return;
 			}
 			if(inputValue.length !== 2) return;
-			Vanillanote.variables.colorBackRs[noteIndex] = inputValue;
-			Vanillanote.elements.colorBack0s[noteIndex].style.backgroundColor = "#" + Vanillanote.variables.colorBackRs[noteIndex] +  Vanillanote.variables.colorBackGs[noteIndex] +  Vanillanote.variables.colorBackBs[noteIndex];
+			vn.variables.colorBackRs[noteIndex] = inputValue;
+			vn.elements.colorBack0s[noteIndex].style.backgroundColor = "#" + vn.variables.colorBackRs[noteIndex] +  vn.variables.colorBackGs[noteIndex] +  vn.variables.colorBackBs[noteIndex];
 		},
 		colorBackRInput_onBlur : function(e: any) {
 			var value = e.target.value;
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(value)) {
-				e.target.value = Vanillanote.variables.colorBackRs[noteIndex];
+				e.target.value = vn.variables.colorBackRs[noteIndex];
 				return;
 			}
 			if(value.length !== 2) {
-				e.target.value = Vanillanote.variables.colorBackRs[noteIndex];
+				e.target.value = vn.variables.colorBackRs[noteIndex];
 			}
 		},
 		//colorBack G Input event
@@ -6289,24 +6290,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(inputValue)) {
-				inputValue = Vanillanote.variables.colorBackGs[noteIndex];
+				inputValue = vn.variables.colorBackGs[noteIndex];
 				e.target.value = inputValue;
 				return;
 			}
 			if(inputValue.length !== 2) return;
-			Vanillanote.variables.colorBackGs[noteIndex] = inputValue;
-			Vanillanote.elements.colorBack0s[noteIndex].style.backgroundColor = "#" + Vanillanote.variables.colorBackRs[noteIndex] +  Vanillanote.variables.colorBackGs[noteIndex] +  Vanillanote.variables.colorBackBs[noteIndex];
+			vn.variables.colorBackGs[noteIndex] = inputValue;
+			vn.elements.colorBack0s[noteIndex].style.backgroundColor = "#" + vn.variables.colorBackRs[noteIndex] +  vn.variables.colorBackGs[noteIndex] +  vn.variables.colorBackBs[noteIndex];
 		},
 		colorBackGInput_onBlur : function(e: any) {
 			var value = e.target.value;
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(value)) {
-				e.target.value = Vanillanote.variables.colorBackGs[noteIndex];
+				e.target.value = vn.variables.colorBackGs[noteIndex];
 				return;
 			}
 			if(value.length !== 2) {
-				e.target.value = Vanillanote.variables.colorBackGs[noteIndex];
+				e.target.value = vn.variables.colorBackGs[noteIndex];
 			}
 		},
 		//colorBack B Input event
@@ -6318,24 +6319,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(inputValue)) {
-				inputValue = Vanillanote.variables.colorBackBs[noteIndex];
+				inputValue = vn.variables.colorBackBs[noteIndex];
 				e.target.value = inputValue;
 				return;
 			}
 			if(inputValue.length !== 2) return;
-			Vanillanote.variables.colorBackBs[noteIndex] = inputValue;
-			Vanillanote.elements.colorBack0s[noteIndex].style.backgroundColor = "#" + Vanillanote.variables.colorBackRs[noteIndex] +  Vanillanote.variables.colorBackGs[noteIndex] +  Vanillanote.variables.colorBackBs[noteIndex];
+			vn.variables.colorBackBs[noteIndex] = inputValue;
+			vn.elements.colorBack0s[noteIndex].style.backgroundColor = "#" + vn.variables.colorBackRs[noteIndex] +  vn.variables.colorBackGs[noteIndex] +  vn.variables.colorBackBs[noteIndex];
 		},
 		colorBackBInput_onBlur : function(e: any) {
 			var value = e.target.value;
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkHex(value)) {
-				e.target.value = Vanillanote.variables.colorBackBs[noteIndex];
+				e.target.value = vn.variables.colorBackBs[noteIndex];
 				return;
 			}
 			if(value.length !== 2) {
-				e.target.value = Vanillanote.variables.colorBackBs[noteIndex];
+				e.target.value = vn.variables.colorBackBs[noteIndex];
 			}
 		},
 		//colorBack Opacity Input event
@@ -6350,7 +6351,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkRealNumber(inputValue)) {
-				inputValue = Vanillanote.variables.colorBackOs[noteIndex];
+				inputValue = vn.variables.colorBackOs[noteIndex];
 				e.target.value = inputValue;
 				return;
 			}
@@ -6365,30 +6366,30 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				e.target.value = Math.round(inputValue * 10) / 10;
 			}
 			
-			Vanillanote.variables.colorBackOs[noteIndex] = inputValue;
-			Vanillanote.elements.colorBack0s[noteIndex].style.opacity = Vanillanote.variables.colorBackOs[noteIndex];
+			vn.variables.colorBackOs[noteIndex] = inputValue;
+			vn.elements.colorBack0s[noteIndex].style.opacity = vn.variables.colorBackOs[noteIndex];
 		},
 		colorBackOpacityInput_onBlur : function(e: any) {
 			var value = e.target.value;
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			if(!checkRealNumber(value)) {
-				e.target.value = Vanillanote.variables.colorBackOs[noteIndex];
+				e.target.value = vn.variables.colorBackOs[noteIndex];
 			}
 		},
 		//colorBack0 event
 		colorBack0_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorBackRGBs[noteIndex] = "#" + Vanillanote.variables.colorBackRs[noteIndex] +  Vanillanote.variables.colorBackGs[noteIndex] +  Vanillanote.variables.colorBackBs[noteIndex];
-			Vanillanote.variables.colorBackOpacitys[noteIndex] = Vanillanote.variables.colorBackOs[noteIndex];
+			vn.variables.colorBackRGBs[noteIndex] = "#" + vn.variables.colorBackRs[noteIndex] +  vn.variables.colorBackGs[noteIndex] +  vn.variables.colorBackBs[noteIndex];
+			vn.variables.colorBackOpacitys[noteIndex] = vn.variables.colorBackOs[noteIndex];
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-				 = getRGBAFromHex(Vanillanote.variables.colorBackRGBs[noteIndex], Vanillanote.variables.colorBackOpacitys[noteIndex] === "0" ? 1 : Vanillanote.variables.colorBackOpacitys[noteIndex]);
+				(vn.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+				 = getRGBAFromHex(vn.variables.colorBackRGBs[noteIndex], vn.variables.colorBackOpacitys[noteIndex] === "0" ? 1 : vn.variables.colorBackOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6401,15 +6402,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorBack1_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color14[noteIndex]);
-			Vanillanote.variables.colorBackOpacitys[noteIndex] = "1";
+			vn.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color14[noteIndex]);
+			vn.variables.colorBackOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorBackRGBs[noteIndex], Vanillanote.variables.colorBackOpacitys[noteIndex]);
+				(vn.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorBackRGBs[noteIndex], vn.variables.colorBackOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6422,15 +6423,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorBack2_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color15[noteIndex]);
-			Vanillanote.variables.colorBackOpacitys[noteIndex] = "1";
+			vn.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color15[noteIndex]);
+			vn.variables.colorBackOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorBackRGBs[noteIndex], Vanillanote.variables.colorBackOpacitys[noteIndex]);
+				(vn.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorBackRGBs[noteIndex], vn.variables.colorBackOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6443,15 +6444,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorBack3_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color16[noteIndex]);
-			Vanillanote.variables.colorBackOpacitys[noteIndex] = "1";
+			vn.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color16[noteIndex]);
+			vn.variables.colorBackOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorBackRGBs[noteIndex], Vanillanote.variables.colorBackOpacitys[noteIndex]);
+				(vn.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorBackRGBs[noteIndex], vn.variables.colorBackOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6464,15 +6465,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorBack4_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color17[noteIndex]);
-			Vanillanote.variables.colorBackOpacitys[noteIndex] = "1";
+			vn.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color17[noteIndex]);
+			vn.variables.colorBackOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorBackRGBs[noteIndex], Vanillanote.variables.colorBackOpacitys[noteIndex]);
+				(vn.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorBackRGBs[noteIndex], vn.variables.colorBackOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6485,15 +6486,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorBack5_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color18[noteIndex]);
-			Vanillanote.variables.colorBackOpacitys[noteIndex] = "1";
+			vn.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color18[noteIndex]);
+			vn.variables.colorBackOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorBackRGBs[noteIndex], Vanillanote.variables.colorBackOpacitys[noteIndex]);
+				(vn.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorBackRGBs[noteIndex], vn.variables.colorBackOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6506,15 +6507,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorBack6_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color19[noteIndex]);
-			Vanillanote.variables.colorBackOpacitys[noteIndex] = "1";
+			vn.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color19[noteIndex]);
+			vn.variables.colorBackOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorBackRGBs[noteIndex], Vanillanote.variables.colorBackOpacitys[noteIndex]);
+				(vn.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorBackRGBs[noteIndex], vn.variables.colorBackOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6527,15 +6528,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		colorBack7_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
-			Vanillanote.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(Vanillanote.colors.color20[noteIndex]);
-			Vanillanote.variables.colorBackOpacitys[noteIndex] = "1";
+			vn.variables.colorBackRGBs[noteIndex] = getHexColorFromColorName(vn.colors.color20[noteIndex]);
+			vn.variables.colorBackOpacitys[noteIndex] = "1";
 			if(!isMobileDevice()) {
-				(Vanillanote.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
-					= getRGBAFromHex(Vanillanote.variables.colorBackRGBs[noteIndex], Vanillanote.variables.colorBackOpacitys[noteIndex]);
+				(vn.elements.colorBackSelects[noteIndex] as any).querySelector("."+getEventChildrenClassName()).style.color
+					= getRGBAFromHex(vn.variables.colorBackRGBs[noteIndex], vn.variables.colorBackOpacitys[noteIndex]);
 			}
 			
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -6551,14 +6552,14 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			// If the selection is a single point
-			if (Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges[noteIndex] as any).collapsed) {
+			if (vn.variables.editRanges[noteIndex] && (vn.variables.editRanges[noteIndex] as any).collapsed) {
 				// Reset all styles and reposition to the original selection point.
 				initToggleButtonVariables(noteIndex);
 				setOriginEditSelection(noteIndex);
 			}
 			else {	// Dragging
 				// Specify style for dragged characters
-		        modifySelectedSingleElement(noteIndex, Vanillanote.variables.defaultStyles[noteIndex]);
+		        modifySelectedSingleElement(noteIndex, vn.variables.defaultStyles[noteIndex]);
 			}
 		},
 		
@@ -6566,12 +6567,12 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		//undo
 		undoButton_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
-			if(!noteIndex) noteIndex = Vanillanote.variables.lastActiveNote;
+			if(!noteIndex) noteIndex = vn.variables.lastActiveNote;
 			// Disconnect the observer.
 			elementsEvent["note_observer"].disconnect();
-			if(Vanillanote.variables.recodeContings[noteIndex] <= 0) return;
-			Vanillanote.variables.recodeContings[noteIndex] = Vanillanote.variables.recodeContings[noteIndex] - 1;
-			replaceDifferentBetweenElements(Vanillanote.elements.textareas[noteIndex], Vanillanote.variables.recodeNotes[noteIndex][Vanillanote.variables.recodeContings[noteIndex]]);
+			if(vn.variables.recodeContings[noteIndex] <= 0) return;
+			vn.variables.recodeContings[noteIndex] = vn.variables.recodeContings[noteIndex] - 1;
+			replaceDifferentBetweenElements(vn.elements.textareas[noteIndex], vn.variables.recodeNotes[noteIndex][vn.variables.recodeContings[noteIndex]]);
 			
 			// Reconnect the observer.
 			connectObserver();
@@ -6581,12 +6582,12 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		//redo
 		redoButton_onClick : function(e: any) {
 			var noteIndex = getNoteIndex(e.target);
-			if(!noteIndex) noteIndex = Vanillanote.variables.lastActiveNote;
+			if(!noteIndex) noteIndex = vn.variables.lastActiveNote;
 			// Disconnect the observer.
 			elementsEvent["note_observer"].disconnect();
-			if(Vanillanote.variables.recodeContings[noteIndex] >= Vanillanote.variables.recodeNotes[noteIndex].length - 1) return;
-			Vanillanote.variables.recodeContings[noteIndex] = Vanillanote.variables.recodeContings[noteIndex] + 1;
-			replaceDifferentBetweenElements(Vanillanote.elements.textareas[noteIndex], Vanillanote.variables.recodeNotes[noteIndex][Vanillanote.variables.recodeContings[noteIndex]]);
+			if(vn.variables.recodeContings[noteIndex] >= vn.variables.recodeNotes[noteIndex].length - 1) return;
+			vn.variables.recodeContings[noteIndex] = vn.variables.recodeContings[noteIndex] + 1;
+			replaceDifferentBetweenElements(vn.elements.textareas[noteIndex], vn.variables.recodeNotes[noteIndex][vn.variables.recodeContings[noteIndex]]);
 			
 			// Reconnect the observer.
 			connectObserver();
@@ -6610,10 +6611,10 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			// Open modal background
 			var displayBlock = getId(noteIndex, "on_display_block");
 			var displayNone = getId(noteIndex, "on_display_none");
-			Vanillanote.elements.backModals[noteIndex].classList.remove(displayNone);
-			Vanillanote.elements.backModals[noteIndex].classList.add(displayBlock);
-			Vanillanote.elements.helpModals[noteIndex].classList.remove(displayNone);
-			Vanillanote.elements.helpModals[noteIndex].classList.add(displayBlock);
+			vn.elements.backModals[noteIndex].classList.remove(displayNone);
+			vn.elements.backModals[noteIndex].classList.add(displayBlock);
+			vn.elements.helpModals[noteIndex].classList.remove(displayNone);
+			vn.elements.helpModals[noteIndex].classList.add(displayBlock);
 		},
 		helpModal_onClick : function(e: any) {},
 		
@@ -6631,7 +6632,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var noteIndex = getNoteIndex(e.target);
 			if(!noteIndex) return;
 			closePlaceholder(noteIndex);
-			Vanillanote.elements.textareas[noteIndex].focus();
+			vn.elements.textareas[noteIndex].focus();
 		},
 		
 		//==================================================================================
@@ -6720,7 +6721,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			var isVanillanote = false;
 			
 			while(note) {
-				if(textarea.tagName === (Vanillanote.variables.noteName+"-textarea").toUpperCase()) {
+				if(textarea.tagName === (vn.variables.noteName+"-textarea").toUpperCase()) {
 					isTextarea = true;
 				}
 				else {
@@ -6738,7 +6739,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			
 			// In case it's not inside the note.
 			if(!isVanillanote) {
-				for(var i = 0; i < Vanillanote.elements.notes.length; i++) {
+				for(var i = 0; i < vn.elements.notes.length; i++) {
 					initToggleButtonVariables(i);
 				}
 				return;
@@ -6807,24 +6808,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var addClickEvent = function(element: any, id: string) {
 		element.addEventListener("click", function(event: any) {
-			consoleLog("Vanillanote.cssEvents.target_onBeforeClick", "params :" , "(event)", event, "(target)", event.target);
-			if(Vanillanote.cssEvents.target_onBeforeClick(event) && event.target.classList.contains(getClickCssEventElementClassName())) {
+			consoleLog("vn.cssEvents.target_onBeforeClick", "params :" , "(event)", event, "(target)", event.target);
+			if(vn.cssEvents.target_onBeforeClick(event) && event.target.classList.contains(getClickCssEventElementClassName())) {
 				
 				consoleLog("target_onClick", "params :" , "(event)", event, "(target)", event.target);
 				target_onClick(event);
 				
-				consoleLog("Vanillanote.cssEvents.target_onAfterClick", "params :" , "(event)", event, "(target)", event.target);
-				Vanillanote.cssEvents.target_onAfterClick(event);
+				consoleLog("vn.cssEvents.target_onAfterClick", "params :" , "(event)", event, "(target)", event.target);
+				vn.cssEvents.target_onAfterClick(event);
 			}
 			
-			consoleLog("Vanillanote.elementEvents."+id+"_onBeforeClick", "params :" , "(event)", event, "(target)", event.target);
-			if(!(Vanillanote.elementEvents as any)[id+"_onBeforeClick"](event)) return;
+			consoleLog("vn.elementEvents."+id+"_onBeforeClick", "params :" , "(event)", event, "(target)", event.target);
+			if(!(vn.elementEvents as any)[id+"_onBeforeClick"](event)) return;
 			
 			consoleLog(id+"_onClick", "params :" , "(event)", event, "(target)", event.target);
 			(elementsEvent as any)[id+"_onClick"](event);
 			
-			consoleLog("Vanillanote.elementEvents."+id+"_onAfterClick", "params :" , "(event)", event, "(target)", event.target);
-			(Vanillanote.elementEvents as any)[id+"_onAfterClick"](event);
+			consoleLog("vn.elementEvents."+id+"_onAfterClick", "params :" , "(event)", event, "(target)", event.target);
+			(vn.elementEvents as any)[id+"_onAfterClick"](event);
 			
 			event.stopImmediatePropagation();
 		});
@@ -6838,15 +6839,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var addMouseoverEvent = function(element: any, id: string) {
 		element.addEventListener("mouseover", function(event: any) {
-			consoleLog("Vanillanote.cssEvents.target_onBeforeMouseover", "params :" , "(event)", event, "(target)", event.target);
-			if(!Vanillanote.cssEvents.target_onBeforeMouseover(event)) return;
+			consoleLog("vn.cssEvents.target_onBeforeMouseover", "params :" , "(event)", event, "(target)", event.target);
+			if(!vn.cssEvents.target_onBeforeMouseover(event)) return;
 			if(!event.target.classList.contains(getOnOverCssEventElementClassName())) return;
 			
 			consoleLog("target_onMouseover", "params :" , "(event)", event, "(target)", event.target);
 			target_onMouseover(event);
 			
-			consoleLog("Vanillanote.cssEvents.target_onAfterMouseover", "params :" , "(event)", event, "(target)", event.target);
-			Vanillanote.cssEvents.target_onAfterMouseover(event);
+			consoleLog("vn.cssEvents.target_onAfterMouseover", "params :" , "(event)", event, "(target)", event.target);
+			vn.cssEvents.target_onAfterMouseover(event);
 			
 			event.stopImmediatePropagation();
 		});
@@ -6860,15 +6861,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var addMouseoutEvent = function(element: any, id: string) {
 		element.addEventListener("mouseout", function(event: any) {
-			consoleLog("Vanillanote.cssEvents.target_onBeforeMouseout", "params :" , "(event)", event, "(target)", event.target);
-			if(!Vanillanote.cssEvents.target_onBeforeMouseout(event)) return;
+			consoleLog("vn.cssEvents.target_onBeforeMouseout", "params :" , "(event)", event, "(target)", event.target);
+			if(!vn.cssEvents.target_onBeforeMouseout(event)) return;
 			if(!event.target.classList.contains(getOnOverCssEventElementClassName())) return;
 			
 			consoleLog("target_onMouseout", "params :" , "(event)", event, "(target)", event.target);
 			target_onMouseout(event);
 			
-			consoleLog("Vanillanote.cssEvents.target_onAfterMouseout", "params :" , "(event)", event, "(target)", event.target);
-			Vanillanote.cssEvents.target_onAfterMouseout(event);
+			consoleLog("vn.cssEvents.target_onAfterMouseout", "params :" , "(event)", event, "(target)", event.target);
+			vn.cssEvents.target_onAfterMouseout(event);
 			
 			event.stopImmediatePropagation();
 		});
@@ -6882,15 +6883,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var addTouchstartEvent = function(element: any, id: string) {
 		element.addEventListener("touchstart", function(event: any) {
-			consoleLog("Vanillanote.cssEvents.target_onBeforeTouchstart", "params :" , "(event)", event, "(target)", event.target);
-			if(!Vanillanote.cssEvents.target_onBeforeTouchstart(event)) return;
+			consoleLog("vn.cssEvents.target_onBeforeTouchstart", "params :" , "(event)", event, "(target)", event.target);
+			if(!vn.cssEvents.target_onBeforeTouchstart(event)) return;
 			if(!event.target.classList.contains(getOnOverCssEventElementClassName())) return;
 			
 			consoleLog("target_onTouchstart", "params :" , "(event)", event, "(target)", event.target);
 			target_onTouchstart(event);
 			
-			consoleLog("Vanillanote.cssEvents.target_onAfterTouchstart", "params :" , "(event)", event, "(target)", event.target);
-			Vanillanote.cssEvents.target_onAfterTouchstart(event);
+			consoleLog("vn.cssEvents.target_onAfterTouchstart", "params :" , "(event)", event, "(target)", event.target);
+			vn.cssEvents.target_onAfterTouchstart(event);
 			
 			event.stopImmediatePropagation();
 		});
@@ -6904,15 +6905,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	*/
 	var addTouchendEvent = function(element: any, id: string) {
 		element.addEventListener("touchend", function(event: any) {
-			consoleLog("Vanillanote.cssEvents.target_onBeforeTouchend", "params :" , "(event)", event, "(target)", event.target);
-			if(!Vanillanote.cssEvents.target_onBeforeTouchend(event)) return;
+			consoleLog("vn.cssEvents.target_onBeforeTouchend", "params :" , "(event)", event, "(target)", event.target);
+			if(!vn.cssEvents.target_onBeforeTouchend(event)) return;
 			if(!event.target.classList.contains(getOnOverCssEventElementClassName())) return;
 			
 			consoleLog("target_onTouchend", "params :" , "(event)", event, "(target)", event.target);
 			target_onTouchend(event);
 			
-			consoleLog("Vanillanote.cssEvents.target_onAfterTouchend", "params :" , "(event)", event, "(target)", event.target);
-			Vanillanote.cssEvents.target_onAfterTouchend(event);
+			consoleLog("vn.cssEvents.target_onAfterTouchend", "params :" , "(event)", event, "(target)", event.target);
+			vn.cssEvents.target_onAfterTouchend(event);
 			
 			event.stopImmediatePropagation();
 		});
@@ -6960,26 +6961,26 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		element.setAttribute("placeholder","");
 		
 		element.addEventListener("input", function(event: any) {
-			consoleLog("Vanillanote.elementEvents."+id+"_onBeforeInput", "params :" , "(event)", event, "(target)", event.target);
-			if(!(Vanillanote.elementEvents as any)[id+"_onBeforeInput"](event)) return;
+			consoleLog("vn.elementEvents."+id+"_onBeforeInput", "params :" , "(event)", event, "(target)", event.target);
+			if(!(vn.elementEvents as any)[id+"_onBeforeInput"](event)) return;
 			
 			consoleLog(id+"_onInput", "params :" , "(event)", event, "(target)", event.target);
 			(elementsEvent as any)[id+"_onInput"](event);
 			
-			consoleLog("Vanillanote.elementEvents."+id+"_onAfterInput", "params :" , "(event)", event, "(target)", event.target);
-			(Vanillanote.elementEvents as any)[id+"_onAfterInput"](event);
+			consoleLog("vn.elementEvents."+id+"_onAfterInput", "params :" , "(event)", event, "(target)", event.target);
+			(vn.elementEvents as any)[id+"_onAfterInput"](event);
 			
 			event.stopImmediatePropagation();
 		});
 		element.addEventListener("blur", function(event: any) {
-			consoleLog("Vanillanote.elementEvents."+id+"_onBeforeBlur", "params :" , "(event)", event, "(target)", event.target);
-			if(!(Vanillanote.elementEvents as any)[id+"_onBeforeBlur"](event)) return;
+			consoleLog("vn.elementEvents."+id+"_onBeforeBlur", "params :" , "(event)", event, "(target)", event.target);
+			if(!(vn.elementEvents as any)[id+"_onBeforeBlur"](event)) return;
 			
 			consoleLog(id+"_onBlur", "params :" , "(event)", event, "(target)", event.target);
 			(elementsEvent as any)[id+"_onBlur"](event);
 			
-			consoleLog("Vanillanote.elementEvents."+id+"_onAfterBlur", "params :" , "(event)", event, "(target)", event.target);
-			(Vanillanote.elementEvents as any)[id+"_onAfterBlur"](event);
+			consoleLog("vn.elementEvents."+id+"_onAfterBlur", "params :" , "(event)", event, "(target)", event.target);
+			(vn.elementEvents as any)[id+"_onAfterBlur"](event);
 			
 			event.stopImmediatePropagation();
 		});
@@ -7011,7 +7012,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		tempEl1.setAttribute("style", "display:inline-block;width:30px;position:relative;margin-left:3px;;margin-left:3px;");
 		tempEl2 = document.createElement("span");
 		tempEl2.setAttribute("class","material-symbols-rounded");
-		tempEl2.setAttribute("style","font-size:1.3em;position:absolute;bottom:-6px;cursor:pointer;color:" + getHexColorFromColorName(Vanillanote.colors.color1[i]));
+		tempEl2.setAttribute("style","font-size:1.3em;position:absolute;bottom:-6px;cursor:pointer;color:" + getHexColorFromColorName(vn.colors.color1[i]));
 		tempEl2.textContent = iconName;
 		tempEl1.appendChild(tempEl2);
 		return tempEl1;
@@ -7020,13 +7021,13 @@ function createVanillanote(Vanillanote: Vanillanote) {
 	var createElementFontFamiliySelect = function(element: any, elementTag: string, id: string, className: string, idx: number, appendNodeSetObject: any) {
 		element = createElement(element, elementTag, id, className, idx, appendNodeSetObject);
 		// The font event is dynamically generated
-		(Vanillanote.elementEvents as any)[id+"_onBeforeClick"] = function(event: any) {return true;};
+		(vn.elementEvents as any)[id+"_onBeforeClick"] = function(event: any) {return true;};
 		(elementsEvent as any)[id+"_onClick"] = function(event: any) {
 			fontFamilySelectList_onClick(event);
 			selectToggle(event.target);
 			var noteIndex = event.target.getAttribute("data-note-index");
 			// If the selection is a single point
-			if(Vanillanote.variables.editRanges[noteIndex] && (Vanillanote.variables.editRanges as any)[noteIndex].collapsed) {
+			if(vn.variables.editRanges[noteIndex] && (vn.variables.editRanges as any)[noteIndex].collapsed) {
 				// Re-move to the original selection point
 				setOriginEditSelection(noteIndex);
 			}
@@ -7035,7 +7036,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				modifySelectedSingleElement(noteIndex, getObjectNoteCss(noteIndex));
 			}
 		};
-		(Vanillanote.elementEvents as any)[id+"_onAfterClick"] = function(event: any) {};
+		(vn.elementEvents as any)[id+"_onAfterClick"] = function(event: any) {};
 		element.classList.add(getClickCssEventElementClassName());
 		element.classList.add(getOnOverCssEventElementClassName());
 		addClickEvent(element, id);
@@ -7052,56 +7053,56 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		var type = getColorShade(mainColor);
 		
 		if(type === "light") {
-			Vanillanote.colors.color1[i] = "#333333";	//filled
-			Vanillanote.colors.color2[i] = "#ffffff";	//empty
-			Vanillanote.colors.color3[i] = getAdjustHexColor(mainColor,"18");	//toolbar
-			Vanillanote.colors.color4[i] = mainColor;	//button
-			Vanillanote.colors.color5[i] = getAdjustHexColor(mainColor,"-18");	//active
-			Vanillanote.colors.color6[i] = getAdjustHexColor(mainColor,"-1f");	//border
-			Vanillanote.colors.color7[i] = getAdjustHexColor(mainColor,"-2f");	//box-shadow
-			Vanillanote.colors.color8[i] = "#609966";	//correct
-			Vanillanote.colors.color9[i] = "#df2e38";	//notice
-			Vanillanote.colors.color10[i] = "#333333";	//modal text
-			Vanillanote.colors.color11[i] = "#666666";	//a tag color
-			Vanillanote.colors.color12[i] = "#333333";	//color 0 text color
-			Vanillanote.colors.color13[i] = "#ffffff";	//color 0 text background color
-			Vanillanote.colors.color14[i] = "#ff7f7f";	//color 1
-			Vanillanote.colors.color15[i] = "#ffad66";	//color 2
-			Vanillanote.colors.color16[i] = "#ffff66";	//color 3
-			Vanillanote.colors.color17[i] = "#99ff99";	//color 4
-			Vanillanote.colors.color18[i] = "#99ccff";	//color 5
-			Vanillanote.colors.color19[i] = "#6699cc";	//color 6
-			Vanillanote.colors.color20[i] = "#cc99cc";	//color 7
+			vn.colors.color1[i] = "#333333";	//filled
+			vn.colors.color2[i] = "#ffffff";	//empty
+			vn.colors.color3[i] = getAdjustHexColor(mainColor,"18");	//toolbar
+			vn.colors.color4[i] = mainColor;	//button
+			vn.colors.color5[i] = getAdjustHexColor(mainColor,"-18");	//active
+			vn.colors.color6[i] = getAdjustHexColor(mainColor,"-1f");	//border
+			vn.colors.color7[i] = getAdjustHexColor(mainColor,"-2f");	//box-shadow
+			vn.colors.color8[i] = "#609966";	//correct
+			vn.colors.color9[i] = "#df2e38";	//notice
+			vn.colors.color10[i] = "#333333";	//modal text
+			vn.colors.color11[i] = "#666666";	//a tag color
+			vn.colors.color12[i] = "#333333";	//color 0 text color
+			vn.colors.color13[i] = "#ffffff";	//color 0 text background color
+			vn.colors.color14[i] = "#ff7f7f";	//color 1
+			vn.colors.color15[i] = "#ffad66";	//color 2
+			vn.colors.color16[i] = "#ffff66";	//color 3
+			vn.colors.color17[i] = "#99ff99";	//color 4
+			vn.colors.color18[i] = "#99ccff";	//color 5
+			vn.colors.color19[i] = "#6699cc";	//color 6
+			vn.colors.color20[i] = "#cc99cc";	//color 7
 		}
 		else {
-			Vanillanote.colors.color1[i] = "#ffffff";	//filled
-			Vanillanote.colors.color2[i] = "#ffffff";	//empty
-			Vanillanote.colors.color3[i] = getAdjustHexColor(mainColor,"18");	//toolbar
-			Vanillanote.colors.color4[i] = mainColor;	//button
-			Vanillanote.colors.color5[i] = getAdjustHexColor(mainColor,"-18");	//active
-			Vanillanote.colors.color6[i] = getAdjustHexColor(mainColor,"-1f");	//border
-			Vanillanote.colors.color7[i] = getAdjustHexColor(mainColor,"-2f");	//box-shadow
-			Vanillanote.colors.color8[i] = "#609966";	//correct
-			Vanillanote.colors.color9[i] = "#df2e38";	//notice
-			Vanillanote.colors.color10[i] = "#333333";	//modal text
-			Vanillanote.colors.color11[i] = "#666666";	//a tag color
-			Vanillanote.colors.color12[i] = "#333333";	//color 0 text color
-			Vanillanote.colors.color13[i] = "#ffffff";	//color 0 text background color
-			Vanillanote.colors.color14[i] = "#b70404";	//color 1
-			Vanillanote.colors.color15[i] = "#e55807";	//color 2
-			Vanillanote.colors.color16[i] = "#f1c93b";	//color 3
-			Vanillanote.colors.color17[i] = "#1a5d1a";	//color 4
-			Vanillanote.colors.color18[i] = "#068fff";	//color 5
-			Vanillanote.colors.color19[i] = "#0c134f";	//color 6
-			Vanillanote.colors.color20[i] = "#5c469c";	//color 7
+			vn.colors.color1[i] = "#ffffff";	//filled
+			vn.colors.color2[i] = "#ffffff";	//empty
+			vn.colors.color3[i] = getAdjustHexColor(mainColor,"18");	//toolbar
+			vn.colors.color4[i] = mainColor;	//button
+			vn.colors.color5[i] = getAdjustHexColor(mainColor,"-18");	//active
+			vn.colors.color6[i] = getAdjustHexColor(mainColor,"-1f");	//border
+			vn.colors.color7[i] = getAdjustHexColor(mainColor,"-2f");	//box-shadow
+			vn.colors.color8[i] = "#609966";	//correct
+			vn.colors.color9[i] = "#df2e38";	//notice
+			vn.colors.color10[i] = "#333333";	//modal text
+			vn.colors.color11[i] = "#666666";	//a tag color
+			vn.colors.color12[i] = "#333333";	//color 0 text color
+			vn.colors.color13[i] = "#ffffff";	//color 0 text background color
+			vn.colors.color14[i] = "#b70404";	//color 1
+			vn.colors.color15[i] = "#e55807";	//color 2
+			vn.colors.color16[i] = "#f1c93b";	//color 3
+			vn.colors.color17[i] = "#1a5d1a";	//color 4
+			vn.colors.color18[i] = "#068fff";	//color 5
+			vn.colors.color19[i] = "#0c134f";	//color 6
+			vn.colors.color20[i] = "#5c469c";	//color 7
 		}
 	}
 	//==================================================================================
 	//document, window event
-	Vanillanote.eventStore.selectionchange = function(event: any) {
+	vn.eventStore.selectionchange = function(event: any) {
 		elementsEvent["document_onSelectionchange"](event);
 	};
-	Vanillanote.eventStore.keydown = function(event) {
+	vn.eventStore.keydown = function(event) {
 		if ((event.ctrlKey || event.metaKey) && (event.key === "z" || event.key === "Z")) {
 			event.preventDefault();
 			elementsEvent["undoButton_onClick"](event);
@@ -7111,29 +7112,29 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			elementsEvent["redoButton_onClick"](event);
 		}
 	};
-	Vanillanote.eventStore.resize = function(event) {
+	vn.eventStore.resize = function(event) {
 		elementsEvent["window_onResize"](event);
 	};
-	Vanillanote.eventStore.resizeViewport = function(event) {
+	vn.eventStore.resizeViewport = function(event) {
 		elementsEvent["window_resizeViewport"](event);
 	};
-	document.addEventListener("selectionchange", Vanillanote.eventStore.selectionchange);
-	document.addEventListener("keydown", Vanillanote.eventStore.keydown);
-	window.addEventListener("resize", Vanillanote.eventStore.resize);
-	if(window.visualViewport) window.visualViewport.addEventListener("resize", Vanillanote.eventStore.resizeViewport);
+	document.addEventListener("selectionchange", vn.eventStore.selectionchange);
+	document.addEventListener("keydown", vn.eventStore.keydown);
+	window.addEventListener("resize", vn.eventStore.resize);
+	if(window.visualViewport) window.visualViewport.addEventListener("resize", vn.eventStore.resizeViewport);
 	
 	//reset css
-    cssText = cssText + Vanillanote.keyframes["@keyframes vanillanote-modal-input"];
-	cssText = cssText + Vanillanote.keyframes["@keyframes vanillanote-modal-small-input"];
+    cssText = cssText + vn.keyframes["@keyframes vanillanote-modal-input"];
+	cssText = cssText + vn.keyframes["@keyframes vanillanote-modal-small-input"];
 	
 	//==================================================================================
 	//create logic (for-statement is used to create multiple note on one page.)
 	//==================================================================================
-	for(var i = 0; i < Vanillanote.elements.notes.length; i++) {
+	for(var i = 0; i < vn.elements.notes.length; i++) {
 		//note
-		note = Vanillanote.elements.notes[i];
-		note.setAttribute("id", Vanillanote.variables.noteName + "_" + i);
-		note.setAttribute("class", Vanillanote.variables.noteName + "_" + i + " " + Vanillanote.variables.noteName);
+		note = vn.elements.notes[i];
+		note.setAttribute("id", vn.variables.noteName + "_" + i);
+		note.setAttribute("class", vn.variables.noteName + "_" + i + " " + vn.variables.noteName);
 		note.setAttribute("data-note-index",i);
 		note.getNote = getNote;
 		note.getNoteData = getNoteData;
@@ -7208,7 +7209,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 //			}
 //		}
 		
-		Vanillanote.variables.defaultStyles[i] = {
+		vn.variables.defaultStyles[i] = {
 			"font-size" : defaultFontSize + "px",
 			"line-height" : defaultLineHeight + "px",
 			"font-family" : defaultFontFamiliy,
@@ -7216,9 +7217,9 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		
 		//==================================================================================
 		//att file accept and prevent types 
-		Vanillanote.variables.attFilePreventTypes[i] =  note.getAttribute("att-file-prevent-types") ? note.getAttribute("att-file-prevent-types").split(",") : [];
-		Vanillanote.variables.attFileAcceptTypes[i] =  note.getAttribute("att-file-accept-types") ? note.getAttribute("att-file-accept-types").split(",") : [];
-		Vanillanote.variables.attFileMaxSizes[i] =  note.getAttribute("att-file-max-size") && checkNumber(note.getAttribute("att-file-max-size")) ? note.getAttribute("att-file-max-size") : 20 * 1024 * 1024; //20MB
+		vn.variables.attFilePreventTypes[i] =  note.getAttribute("att-file-prevent-types") ? note.getAttribute("att-file-prevent-types").split(",") : [];
+		vn.variables.attFileAcceptTypes[i] =  note.getAttribute("att-file-accept-types") ? note.getAttribute("att-file-accept-types").split(",") : [];
+		vn.variables.attFileMaxSizes[i] =  note.getAttribute("att-file-max-size") && checkNumber(note.getAttribute("att-file-max-size")) ? note.getAttribute("att-file-max-size") : 20 * 1024 * 1024; //20MB
 		
 		//==================================================================================
 		//att image accept and prevent types 
@@ -7229,9 +7230,9 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"video/ogg", "video/avi", "video/mpeg", "video/quicktime", "video/x-ms-wmv",
 			"video/x-flv", "video/3gpp", "video/3gpp2", "video/x-matroska"
 			];
-		Vanillanote.variables.attImagePreventTypes[i] =  note.getAttribute("att-image-prevent-types") ? note.getAttribute("att-image-prevent-types").split(",") : [];
-		Vanillanote.variables.attImageAcceptTypes[i] =  note.getAttribute("att-image-accept-types") ? note.getAttribute("att-image-accept-types").split(",") : defaultAttImageAcceptTypes;
-		Vanillanote.variables.attImageMaxSizes[i] =  note.getAttribute("att-image-max-size") && checkNumber(note.getAttribute("att-image-max-size")) ? note.getAttribute("att-image-max-size") : 20 * 1024 * 1024; //20MB
+		vn.variables.attImagePreventTypes[i] =  note.getAttribute("att-image-prevent-types") ? note.getAttribute("att-image-prevent-types").split(",") : [];
+		vn.variables.attImageAcceptTypes[i] =  note.getAttribute("att-image-accept-types") ? note.getAttribute("att-image-accept-types").split(",") : defaultAttImageAcceptTypes;
+		vn.variables.attImageMaxSizes[i] =  note.getAttribute("att-image-max-size") && checkNumber(note.getAttribute("att-image-max-size")) ? note.getAttribute("att-image-max-size") : 20 * 1024 * 1024; //20MB
 		
 		//==================================================================================
 		//note size
@@ -7243,27 +7244,27 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		if(sizeLevel < 1) sizeLevel = 1;
 		if(sizeLevel > 9) sizeLevel = 9;
 		
-		Vanillanote.variables.sizeRates[i] = Vanillanote.variables.sizeRates[i] ? Vanillanote.variables.sizeRates[i] : (sizeLevel + 11) / 20;
+		vn.variables.sizeRates[i] = vn.variables.sizeRates[i] ? vn.variables.sizeRates[i] : (sizeLevel + 11) / 20;
 		
 		//==================================================================================
 		//text area size
-		if(!Vanillanote.variables.textareaOriginWidths[i]) Vanillanote.variables.textareaOriginWidths[i] = note.getAttribute("textarea-width") ? note.getAttribute("textarea-width") : "100%";
+		if(!vn.variables.textareaOriginWidths[i]) vn.variables.textareaOriginWidths[i] = note.getAttribute("textarea-width") ? note.getAttribute("textarea-width") : "100%";
 		textareaMaxWidth = note.getAttribute("textarea-max-width") ? note.getAttribute("textarea-max-width") : "100%";
-		if(!Vanillanote.variables.textareaOriginHeights[i]) Vanillanote.variables.textareaOriginHeights[i] = note.getAttribute("textarea-height") ? note.getAttribute("textarea-height") : (isNoteByMobile ? "350px" : "500px");
+		if(!vn.variables.textareaOriginHeights[i]) vn.variables.textareaOriginHeights[i] = note.getAttribute("textarea-height") ? note.getAttribute("textarea-height") : (isNoteByMobile ? "350px" : "500px");
 		textareaMaxHeight = note.getAttribute("textarea-max-height") ? note.getAttribute("textarea-max-height") : "900px";
 		textareaHeightIsModify = note.getAttribute("textarea-height-isModify") ? note.getAttribute("textarea-height-isModify") : "false";
 		
 		//==================================================================================
 		//tool position
-		Vanillanote.variables.toolPositions[i] = note.getAttribute("tool-position") &&
+		vn.variables.toolPositions[i] = note.getAttribute("tool-position") &&
 			["BOTTOM", "TOP"].indexOf(note.getAttribute("tool-position")) >= 0 ? note.getAttribute("tool-position") : (isNoteByMobile ? "BOTTOM" : "TOP");
 		
 		//==================================================================================
 		//tool toogle
-		Vanillanote.variables.toolToggles[i] = note.getAttribute("tool-toggle") ? note.getAttribute("tool-toggle") === "true" : (isNoteByMobile ? true : false);
-		Vanillanote.variables.toolDefaultLines[i] = note.getAttribute("tool-default-line") && checkNumber(note.getAttribute("tool-default-line")) ?
+		vn.variables.toolToggles[i] = note.getAttribute("tool-toggle") ? note.getAttribute("tool-toggle") === "true" : (isNoteByMobile ? true : false);
+		vn.variables.toolDefaultLines[i] = note.getAttribute("tool-default-line") && checkNumber(note.getAttribute("tool-default-line")) ?
 														Number(note.getAttribute("tool-default-line")) : (isNoteByMobile ? 2 : 1);
-		if(!Vanillanote.variables.toolToggles[i]) Vanillanote.variables.toolDefaultLines[i] = 1;
+		if(!vn.variables.toolToggles[i]) vn.variables.toolDefaultLines[i] = 1;
 		
 		//==================================================================================
 		//default-tool-font-family
@@ -7271,14 +7272,14 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		
 		//==================================================================================
 		//recode
-		Vanillanote.variables.recodeLimit[i] = note.getAttribute("recode-limit") && checkNumber(note.getAttribute("recode-limit"))? Number(note.getAttribute("recode-limit")) : 100;
+		vn.variables.recodeLimit[i] = note.getAttribute("recode-limit") && checkNumber(note.getAttribute("recode-limit"))? Number(note.getAttribute("recode-limit")) : 100;
 		
 		//==================================================================================
 		//placeholder
-		Vanillanote.variables.placeholderIsVisible[i] = note.getAttribute("placeholder-is-visible") ? note.getAttribute("placeholder-is-visible") === "true" : false;
-		Vanillanote.variables.placeholderAddTop[i] = note.getAttribute("placeholder-add-top") && checkRealNumber(note.getAttribute("placeholder-add-top"))? Number(note.getAttribute("placeholder-add-top")) : 0;
-		Vanillanote.variables.placeholderAddLeft[i] = note.getAttribute("placeholder-add-left") && checkRealNumber(note.getAttribute("placeholder-add-top"))? Number(note.getAttribute("placeholder-add-left")) : 0;
-		Vanillanote.variables.placeholderWidth[i] = note.getAttribute("placeholder-width") ? note.getAttribute("placeholder-width") : "";
+		vn.variables.placeholderIsVisible[i] = note.getAttribute("placeholder-is-visible") ? note.getAttribute("placeholder-is-visible") === "true" : false;
+		vn.variables.placeholderAddTop[i] = note.getAttribute("placeholder-add-top") && checkRealNumber(note.getAttribute("placeholder-add-top"))? Number(note.getAttribute("placeholder-add-top")) : 0;
+		vn.variables.placeholderAddLeft[i] = note.getAttribute("placeholder-add-left") && checkRealNumber(note.getAttribute("placeholder-add-top"))? Number(note.getAttribute("placeholder-add-left")) : 0;
+		vn.variables.placeholderWidth[i] = note.getAttribute("placeholder-width") ? note.getAttribute("placeholder-width") : "";
 		placeholderColor = note.getAttribute("placeholder-color") ? note.getAttribute("placeholder-color") : "";
 		placeholderBackgroundColor = note.getAttribute("placeholder-background-color") ? note.getAttribute("placeholder-background-color") : "";
 		placeholderTitle = note.hasAttribute("placeholder-title") ? note.getAttribute("placeholder-title") : "HELLO VANILLANOTE";
@@ -7286,26 +7287,26 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		
 		//==================================================================================
 		//colors
-		Vanillanote.colors.color1[i] = Vanillanote.colors.color1[i] ? getHexColorFromColorName(Vanillanote.colors.color1[i]) : "#333333"; //filled
-		Vanillanote.colors.color2[i] = Vanillanote.colors.color2[i] ? getHexColorFromColorName(Vanillanote.colors.color2[i]) : "#ffffff"; //empty
-		Vanillanote.colors.color3[i] = Vanillanote.colors.color3[i] ? getHexColorFromColorName(Vanillanote.colors.color3[i]) : "#f8f8f8"; //toolbar
-		Vanillanote.colors.color4[i] = Vanillanote.colors.color4[i] ? getHexColorFromColorName(Vanillanote.colors.color4[i]) : "#f4f4f4"; //button
-		Vanillanote.colors.color5[i] = Vanillanote.colors.color5[i] ? getHexColorFromColorName(Vanillanote.colors.color5[i]) : "#cbcbcb"; //active
-		Vanillanote.colors.color6[i] = Vanillanote.colors.color6[i] ? getHexColorFromColorName(Vanillanote.colors.color6[i]) : "#cfcfcf"; //border
-		Vanillanote.colors.color7[i] = Vanillanote.colors.color7[i] ? getHexColorFromColorName(Vanillanote.colors.color7[i]) : "#6f6f6f"; //box-shadow
-		Vanillanote.colors.color8[i] = Vanillanote.colors.color8[i] ? getHexColorFromColorName(Vanillanote.colors.color8[i]) : "#609966"; //correct
-		Vanillanote.colors.color9[i] = Vanillanote.colors.color9[i] ? getHexColorFromColorName(Vanillanote.colors.color9[i]) : "#ea5455"; //notice
-		Vanillanote.colors.color10[i] = Vanillanote.colors.color10[i] ? getHexColorFromColorName(Vanillanote.colors.color10[i]) : "#333333"; //modal text
-		Vanillanote.colors.color11[i] = Vanillanote.colors.color11[i] ? getHexColorFromColorName(Vanillanote.colors.color11[i]) : "#666666"; //a tag color
-		Vanillanote.colors.color12[i] = Vanillanote.colors.color12[i] ? getHexColorFromColorName(Vanillanote.colors.color12[i]) : "#333333"; //color 0 text color
-		Vanillanote.colors.color13[i] = Vanillanote.colors.color13[i] ? getHexColorFromColorName(Vanillanote.colors.color13[i]) : "#ffffff"; //color 0 text background color
-		Vanillanote.colors.color14[i] = Vanillanote.colors.color14[i] ? getHexColorFromColorName(Vanillanote.colors.color14[i]) : "#ff7f7f"; //color 1
-		Vanillanote.colors.color15[i] = Vanillanote.colors.color15[i] ? getHexColorFromColorName(Vanillanote.colors.color15[i]) : "#ffad66"; //color 2
-		Vanillanote.colors.color16[i] = Vanillanote.colors.color16[i] ? getHexColorFromColorName(Vanillanote.colors.color16[i]) : "#ffff66"; //color 3
-		Vanillanote.colors.color17[i] = Vanillanote.colors.color17[i] ? getHexColorFromColorName(Vanillanote.colors.color17[i]) : "#99ff99"; //color 4
-		Vanillanote.colors.color18[i] = Vanillanote.colors.color18[i] ? getHexColorFromColorName(Vanillanote.colors.color18[i]) : "#99ccff"; //color 5
-		Vanillanote.colors.color19[i] = Vanillanote.colors.color19[i] ? getHexColorFromColorName(Vanillanote.colors.color19[i]) : "#6699cc"; //color 6
-		Vanillanote.colors.color20[i] = Vanillanote.colors.color20[i] ? getHexColorFromColorName(Vanillanote.colors.color20[i]) : "#cc99cc"; //color 7
+		vn.colors.color1[i] = vn.colors.color1[i] ? getHexColorFromColorName(vn.colors.color1[i]) : "#333333"; //filled
+		vn.colors.color2[i] = vn.colors.color2[i] ? getHexColorFromColorName(vn.colors.color2[i]) : "#ffffff"; //empty
+		vn.colors.color3[i] = vn.colors.color3[i] ? getHexColorFromColorName(vn.colors.color3[i]) : "#f8f8f8"; //toolbar
+		vn.colors.color4[i] = vn.colors.color4[i] ? getHexColorFromColorName(vn.colors.color4[i]) : "#f4f4f4"; //button
+		vn.colors.color5[i] = vn.colors.color5[i] ? getHexColorFromColorName(vn.colors.color5[i]) : "#cbcbcb"; //active
+		vn.colors.color6[i] = vn.colors.color6[i] ? getHexColorFromColorName(vn.colors.color6[i]) : "#cfcfcf"; //border
+		vn.colors.color7[i] = vn.colors.color7[i] ? getHexColorFromColorName(vn.colors.color7[i]) : "#6f6f6f"; //box-shadow
+		vn.colors.color8[i] = vn.colors.color8[i] ? getHexColorFromColorName(vn.colors.color8[i]) : "#609966"; //correct
+		vn.colors.color9[i] = vn.colors.color9[i] ? getHexColorFromColorName(vn.colors.color9[i]) : "#ea5455"; //notice
+		vn.colors.color10[i] = vn.colors.color10[i] ? getHexColorFromColorName(vn.colors.color10[i]) : "#333333"; //modal text
+		vn.colors.color11[i] = vn.colors.color11[i] ? getHexColorFromColorName(vn.colors.color11[i]) : "#666666"; //a tag color
+		vn.colors.color12[i] = vn.colors.color12[i] ? getHexColorFromColorName(vn.colors.color12[i]) : "#333333"; //color 0 text color
+		vn.colors.color13[i] = vn.colors.color13[i] ? getHexColorFromColorName(vn.colors.color13[i]) : "#ffffff"; //color 0 text background color
+		vn.colors.color14[i] = vn.colors.color14[i] ? getHexColorFromColorName(vn.colors.color14[i]) : "#ff7f7f"; //color 1
+		vn.colors.color15[i] = vn.colors.color15[i] ? getHexColorFromColorName(vn.colors.color15[i]) : "#ffad66"; //color 2
+		vn.colors.color16[i] = vn.colors.color16[i] ? getHexColorFromColorName(vn.colors.color16[i]) : "#ffff66"; //color 3
+		vn.colors.color17[i] = vn.colors.color17[i] ? getHexColorFromColorName(vn.colors.color17[i]) : "#99ff99"; //color 4
+		vn.colors.color18[i] = vn.colors.color18[i] ? getHexColorFromColorName(vn.colors.color18[i]) : "#99ccff"; //color 5
+		vn.colors.color19[i] = vn.colors.color19[i] ? getHexColorFromColorName(vn.colors.color19[i]) : "#6699cc"; //color 6
+		vn.colors.color20[i] = vn.colors.color20[i] ? getHexColorFromColorName(vn.colors.color20[i]) : "#cc99cc"; //color 7
 		//==================================================================================
 		//colors attribute
 		mainColor = note.getAttribute("main-color");
@@ -7356,23 +7357,23 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		}
 		
 		if(invertColor) {
-			Vanillanote.colors.color1[i] = getInvertColor(Vanillanote.colors.color1[i]);
-			Vanillanote.colors.color2[i] = getInvertColor(Vanillanote.colors.color2[i]);
-			Vanillanote.colors.color3[i] = getInvertColor(Vanillanote.colors.color3[i]);
-			Vanillanote.colors.color4[i] = getInvertColor(Vanillanote.colors.color4[i]);
-			Vanillanote.colors.color5[i] = getInvertColor(Vanillanote.colors.color5[i]);
-			Vanillanote.colors.color6[i] = getInvertColor(Vanillanote.colors.color6[i]);
-			Vanillanote.colors.color7[i] = getInvertColor(Vanillanote.colors.color7[i]);
-			Vanillanote.colors.color10[i] = getInvertColor(Vanillanote.colors.color10[i]);
-			Vanillanote.colors.color11[i] = getInvertColor(Vanillanote.colors.color11[i]);
-			Vanillanote.colors.color12[i] = getInvertColor(Vanillanote.colors.color12[i]);
-			Vanillanote.colors.color13[i] = getInvertColor(Vanillanote.colors.color13[i]);
+			vn.colors.color1[i] = getInvertColor(vn.colors.color1[i]);
+			vn.colors.color2[i] = getInvertColor(vn.colors.color2[i]);
+			vn.colors.color3[i] = getInvertColor(vn.colors.color3[i]);
+			vn.colors.color4[i] = getInvertColor(vn.colors.color4[i]);
+			vn.colors.color5[i] = getInvertColor(vn.colors.color5[i]);
+			vn.colors.color6[i] = getInvertColor(vn.colors.color6[i]);
+			vn.colors.color7[i] = getInvertColor(vn.colors.color7[i]);
+			vn.colors.color10[i] = getInvertColor(vn.colors.color10[i]);
+			vn.colors.color11[i] = getInvertColor(vn.colors.color11[i]);
+			vn.colors.color12[i] = getInvertColor(vn.colors.color12[i]);
+			vn.colors.color13[i] = getInvertColor(vn.colors.color13[i]);
 		}
 		
 		//==================================================================================
 		//language
-		if(!Vanillanote.variables.languages[i]) Vanillanote.variables.languages[i] = note.getAttribute("language") ? note.getAttribute("language").toUpperCase() : "ENG"; 
-		if(!Vanillanote.languageSet.hasOwnProperty(Vanillanote.variables.languages[i])) Vanillanote.variables.languages[i] = "ENG";
+		if(!vn.variables.languages[i]) vn.variables.languages[i] = note.getAttribute("language") ? note.getAttribute("language").toUpperCase() : "ENG"; 
+		if(!vn.languageSet.hasOwnProperty(vn.variables.languages[i])) vn.variables.languages[i] = "ENG";
 		
 		//==================================================================================
 		//using note function
@@ -7432,7 +7433,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		//==================================================================================
 		//set style
 		//==================================================================================
-		Vanillanote.csses["template h1"][i] = Vanillanote.csses["template h1"][i] ? Vanillanote.csses["template h1"][i] : {
+		vn.csses["template h1"][i] = vn.csses["template h1"][i] ? vn.csses["template h1"][i] : {
 			"display" : "block",
 			"font-size" : "2em",
 			"line-height" : "1.2em",
@@ -7441,7 +7442,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"padding" : "0 10px",
 			};
 			
-		Vanillanote.csses["template h2"][i] = Vanillanote.csses["template h2"][i] ? Vanillanote.csses["template h2"][i] : {
+		vn.csses["template h2"][i] = vn.csses["template h2"][i] ? vn.csses["template h2"][i] : {
 			"display" : "block",
 			"font-size" : "1.8em",
 			"line-height" : "1.2em",
@@ -7450,7 +7451,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"padding" : "0 10px",
 			};
 			
-		Vanillanote.csses["template h3"][i] = Vanillanote.csses["template h3"][i] ? Vanillanote.csses["template h3"][i] : {
+		vn.csses["template h3"][i] = vn.csses["template h3"][i] ? vn.csses["template h3"][i] : {
 			"display" : "block",
 			"font-size" : "1.6em",
 			"line-height" : "1.2em",
@@ -7460,7 +7461,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"padding" : "0 10px",
 			};
 			
-		Vanillanote.csses["template h4"][i] = Vanillanote.csses["template h4"][i] ? Vanillanote.csses["template h4"][i] : {
+		vn.csses["template h4"][i] = vn.csses["template h4"][i] ? vn.csses["template h4"][i] : {
 			"display" : "block",
 			"font-size" : "1.4em",
 			"line-height" : "1.2em",
@@ -7469,7 +7470,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"padding" : "0 10px",
 			};
 			
-		Vanillanote.csses["template h5"][i] = Vanillanote.csses["template h5"][i] ? Vanillanote.csses["template h5"][i] : {
+		vn.csses["template h5"][i] = vn.csses["template h5"][i] ? vn.csses["template h5"][i] : {
 			"display" : "block",
 			"font-size" : "1.2em",
 			"line-height" : "1.2em",
@@ -7478,7 +7479,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"padding" : "0 10px",
 			};
 			
-		Vanillanote.csses["template h6"][i] = Vanillanote.csses["template h6"][i] ? Vanillanote.csses["template h6"][i] : {
+		vn.csses["template h6"][i] = vn.csses["template h6"][i] ? vn.csses["template h6"][i] : {
 			"display" : "block",
 			"font-size" : "1em",
 			"line-height" : "1.2em",
@@ -7487,60 +7488,60 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"padding" : "0 10px",
 			};
 			
-		Vanillanote.csses["textarea ul"][i] = Vanillanote.csses["textarea ul"][i] ? Vanillanote.csses["textarea ul"][i] : {
+		vn.csses["textarea ul"][i] = vn.csses["textarea ul"][i] ? vn.csses["textarea ul"][i] : {
 			"display" : "block",
 			"list-style-type" : "disc",
 			"padding-left" : "40px",
 			"margin" : "1em 0",
 			};
 			
-		Vanillanote.csses["textarea ol"][i] = Vanillanote.csses["textarea ol"][i] ? Vanillanote.csses["textarea ol"][i] : {
+		vn.csses["textarea ol"][i] = vn.csses["textarea ol"][i] ? vn.csses["textarea ol"][i] : {
 			"display" : "block",
 			"list-style-type" : "decimal",
 			"padding-left" : "40px",
 			"margin" : "1em 0",
 			};
 			
-		Vanillanote.csses["textarea li"][i] = Vanillanote.csses["textarea li"][i] ? Vanillanote.csses["textarea li"][i] : {
+		vn.csses["textarea li"][i] = vn.csses["textarea li"][i] ? vn.csses["textarea li"][i] : {
 			"display" : "list-item",
 			"margin-top" : "0.5em",
 			"margin-bottom" : "0.5em",
 			"padding" : "0 10px",
 			};
 			
-		Vanillanote.csses["textarea p"][i] = Vanillanote.csses["textarea p"][i] ? Vanillanote.csses["textarea p"][i] : {
+		vn.csses["textarea p"][i] = vn.csses["textarea p"][i] ? vn.csses["textarea p"][i] : {
 			"display" : "block",
 			"margin-top" : "1em",
 			"margin-bottom" : "1em",
 			"padding" : "0 10px",
 			};
 			
-		Vanillanote.csses["textarea div"][i] = Vanillanote.csses["textarea div"][i] ? Vanillanote.csses["textarea div"][i] : {
+		vn.csses["textarea div"][i] = vn.csses["textarea div"][i] ? vn.csses["textarea div"][i] : {
 			"display" : "block",
 			"margin-top" : "1em",
 			"margin-bottom" : "1em",
 			"padding" : "0 10px",
 			};
 			
-		Vanillanote.csses["textarea span"][i] = Vanillanote.csses["textarea span"][i] ? Vanillanote.csses["textarea span"][i] : {
+		vn.csses["textarea span"][i] = vn.csses["textarea span"][i] ? vn.csses["textarea span"][i] : {
 			"display" : "inline",
 			};
 			
-		Vanillanote.csses["textarea a"][i] = Vanillanote.csses["textarea a"][i] ? Vanillanote.csses["textarea a"][i] : {
+		vn.csses["textarea a"][i] = vn.csses["textarea a"][i] ? vn.csses["textarea a"][i] : {
 			"display" : "inline",
-			"color" : Vanillanote.colors.color11[i],
+			"color" : vn.colors.color11[i],
 			"text-decoration" : "underline",
 			};
 			
-		Vanillanote.csses["template"][i] = Vanillanote.csses["template"][i] ? Vanillanote.csses["template"][i] : {
+		vn.csses["template"][i] = vn.csses["template"][i] ? vn.csses["template"][i] : {
 			"width" : "100%",
 			"height" : "100%",
 			"position" : "relative",
 			};
 	
-		Vanillanote.csses["textarea"][i] = Vanillanote.csses["textarea"][i] ? Vanillanote.csses["textarea"][i] : {
-			"width" : Vanillanote.variables.textareaOriginWidths[i],
-			"height" : Vanillanote.variables.textareaOriginHeights[i],
+		vn.csses["textarea"][i] = vn.csses["textarea"][i] ? vn.csses["textarea"][i] : {
+			"width" : vn.variables.textareaOriginWidths[i],
+			"height" : vn.variables.textareaOriginHeights[i],
 			"display" : "block",
 			"margin" : "0 auto",
 			"outline" : "none",
@@ -7551,87 +7552,87 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"resize": textareaHeightIsModify === "false" ? "none" : "vertical",
 			"max-width" : textareaMaxWidth,
 			"max-height" : textareaMaxHeight,
-			"box-shadow" : "0 0.5px 1px 0.5px " + Vanillanote.colors.color7[i],
-			"background-color" : Vanillanote.colors.color2[i],
+			"box-shadow" : "0 0.5px 1px 0.5px " + vn.colors.color7[i],
+			"background-color" : vn.colors.color2[i],
 			"font-size" : defaultFontSize + "px",
 			"line-height" : defaultLineHeight + "px",
 			"font-family" : defaultFontFamiliy,
-			"color" : Vanillanote.colors.color12[i],
+			"color" : vn.colors.color12[i],
 			"transition": "height 0.5s",
 			};
-		if(Vanillanote.variables.toolPositions[i] === "BOTTOM") {Vanillanote.csses["textarea"][i]["border-top"] = "0.5px solid " + Vanillanote.colors.color6[i]}
+		if(vn.variables.toolPositions[i] === "BOTTOM") {vn.csses["textarea"][i]["border-top"] = "0.5px solid " + vn.colors.color6[i]}
 	
-		Vanillanote.csses["tool"][i] = Vanillanote.csses["tool"][i] ? Vanillanote.csses["tool"][i] : {
-			"width" : Vanillanote.variables.textareaOriginWidths[i],
-			"height" : (Vanillanote.variables.toolDefaultLines[i] * (Vanillanote.variables.sizeRates[i] * 50)) + "px",
+		vn.csses["tool"][i] = vn.csses["tool"][i] ? vn.csses["tool"][i] : {
+			"width" : vn.variables.textareaOriginWidths[i],
+			"height" : (vn.variables.toolDefaultLines[i] * (vn.variables.sizeRates[i] * 50)) + "px",
 			"padding" : "2px 0",
 			"max-width" : textareaMaxWidth,
 			"display" : "block",
-			"line-height" : (Vanillanote.variables.sizeRates[i] * 50) + "px",
+			"line-height" : (vn.variables.sizeRates[i] * 50) + "px",
 			"margin" : "0 auto",
 			"text-align" : "left",
 			"vertical-align" : "middle",
-			"box-shadow" : "0.25px 0.25px 1px 0.5px " + Vanillanote.colors.color7[i],
-			"font-size" : (Vanillanote.variables.sizeRates[i] * (isNoteByMobile ? 18 : 16)) + "px",
-			"background-color" : Vanillanote.colors.color3[i],
+			"box-shadow" : "0.25px 0.25px 1px 0.5px " + vn.colors.color7[i],
+			"font-size" : (vn.variables.sizeRates[i] * (isNoteByMobile ? 18 : 16)) + "px",
+			"background-color" : vn.colors.color3[i],
 			"font-family" : defaultToolFontFamily,
 			};
 	
-		Vanillanote.csses["icon"][i] = Vanillanote.csses["icon"][i] ? Vanillanote.csses["icon"][i] : {
+		vn.csses["icon"][i] = vn.csses["icon"][i] ? vn.csses["icon"][i] : {
 			"font-size" : "1.3em",
 			"-webkit-user-select" : "none",
 			"-moz-user-select" : "none",
 			"-ms-user-select" : "none",
 			"user-select" : "none",
-			"color" : Vanillanote.colors.color1[i],
+			"color" : vn.colors.color1[i],
 			};
 		
-		Vanillanote.csses["button"][i] = Vanillanote.csses["button"][i] ? Vanillanote.csses["button"][i] : {
-			"width" : (Vanillanote.variables.sizeRates[i] * 50) + "px",
-			"height" : (Vanillanote.variables.sizeRates[i] * 45) + "px",
+		vn.csses["button"][i] = vn.csses["button"][i] ? vn.csses["button"][i] : {
+			"width" : (vn.variables.sizeRates[i] * 50) + "px",
+			"height" : (vn.variables.sizeRates[i] * 45) + "px",
 			"float" : "left",
 			"display" : "inline-block",
 			"cursor" : "pointer",
 			"text-align" : "center",
 			"margin" : "2px 2px",
 			"border-radius" : "5px",
-			"box-shadow" : "0.25px 0.25px 2px 0.25px " + Vanillanote.colors.color7[i],
-			"background-color" : Vanillanote.colors.color4[i],
+			"box-shadow" : "0.25px 0.25px 2px 0.25px " + vn.colors.color7[i],
+			"background-color" : vn.colors.color4[i],
 			"font-family" : defaultToolFontFamily,
 			"position" : "relative",
 			};
 	
-		Vanillanote.csses["select"][i] = Vanillanote.csses["select"][i] ? Vanillanote.csses["select"][i] : {
-			"width" : (Vanillanote.variables.sizeRates[i] * 150) + "px",
-			"height" : (Vanillanote.variables.sizeRates[i] * 45) + "px",
-			"background-color" : Vanillanote.colors.color4[i],
+		vn.csses["select"][i] = vn.csses["select"][i] ? vn.csses["select"][i] : {
+			"width" : (vn.variables.sizeRates[i] * 150) + "px",
+			"height" : (vn.variables.sizeRates[i] * 45) + "px",
+			"background-color" : vn.colors.color4[i],
 			"float" : "left",
 			"display" : "inline-block",
 			"cursor" : "pointer",
 			"text-align" : "center",
 			"margin" : "2px 2px",
 			"border-radius" : "5px",
-			"box-shadow" : "0.25px 0.25px 2px 0.25px " + Vanillanote.colors.color7[i],
-			"color" : Vanillanote.colors.color1[i],
+			"box-shadow" : "0.25px 0.25px 2px 0.25px " + vn.colors.color7[i],
+			"color" : vn.colors.color1[i],
 			"position" : "relative",
 			};
 	
-		Vanillanote.csses["select_box_a"][i] = Vanillanote.csses["select_box_a"][i] ? Vanillanote.csses["select_box_a"][i] : {
-			"min-width" : (Vanillanote.variables.sizeRates[i] * 150) + "px",
-			"background-color" : Vanillanote.colors.color4[i],
+		vn.csses["select_box_a"][i] = vn.csses["select_box_a"][i] ? vn.csses["select_box_a"][i] : {
+			"min-width" : (vn.variables.sizeRates[i] * 150) + "px",
+			"background-color" : vn.colors.color4[i],
 			"display" : "none",
 			"float" : "left",
 			"position" : "absolute",
 			"cursor" : "pointer",
 			"border-radius" : "5px",
-			"box-shadow" : "0.25px 0.25px 0.1em " + Vanillanote.colors.color7[i], 
+			"box-shadow" : "0.25px 0.25px 0.1em " + vn.colors.color7[i], 
 			"opacity" : "0.85",
 			"z-index" : "200",
 			};
-		if(Vanillanote.variables.toolPositions[i] === "BOTTOM") {Vanillanote.csses["select_box_a"][i]["bottom"] = "110%"}
+		if(vn.variables.toolPositions[i] === "BOTTOM") {vn.csses["select_box_a"][i]["bottom"] = "110%"}
 	
-		Vanillanote.csses["select_box_b"][i] = Vanillanote.csses["select_box_b"][i] ? Vanillanote.csses["select_box_b"][i] : {
-			"width" : (Vanillanote.variables.sizeRates[i] * 50) + "px",
+		vn.csses["select_box_b"][i] = vn.csses["select_box_b"][i] ? vn.csses["select_box_b"][i] : {
+			"width" : (vn.variables.sizeRates[i] * 50) + "px",
 			"display" : " none",
 			"float" : "left",
 			"position" : "absolute",
@@ -7639,49 +7640,49 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"border-radius" : "5px",
 			"z-index" : "200",
 			};
-		if(Vanillanote.variables.toolPositions[i] === "BOTTOM") {Vanillanote.csses["select_box_b"][i]["bottom"] = "100%"}
+		if(vn.variables.toolPositions[i] === "BOTTOM") {vn.csses["select_box_b"][i]["bottom"] = "100%"}
 		
-		Vanillanote.csses["select_box_c"][i] = Vanillanote.csses["select_box_c"][i] ? Vanillanote.csses["select_box_c"][i] : {
-			"width" : (Vanillanote.variables.sizeRates[i] * 220 + 30) + "px",
+		vn.csses["select_box_c"][i] = vn.csses["select_box_c"][i] ? vn.csses["select_box_c"][i] : {
+			"width" : (vn.variables.sizeRates[i] * 220 + 30) + "px",
 			"display" : "none",
-			"padding" : "0 " + (Vanillanote.variables.sizeRates[i] * 10) + "px",
+			"padding" : "0 " + (vn.variables.sizeRates[i] * 10) + "px",
 			"float" : "left",
 			"position" : "absolute",
 			"border-radius" : "5px",
-			"box-shadow" : "0.25px 0.25px 0.1em " + Vanillanote.colors.color7[i],
-			"background-color" : Vanillanote.colors.color4[i],
+			"box-shadow" : "0.25px 0.25px 0.1em " + vn.colors.color7[i],
+			"background-color" : vn.colors.color4[i],
 			"opacity" : "0.95",
 			"cursor" : "text",
 			"text-align" : "left",
 			"z-index" : "200",
 			};
-		if(Vanillanote.variables.toolPositions[i] === "BOTTOM") {Vanillanote.csses["select_box_c"][i]["bottom"] = "110%"}
+		if(vn.variables.toolPositions[i] === "BOTTOM") {vn.csses["select_box_c"][i]["bottom"] = "110%"}
 			
-		Vanillanote.csses["select_list"][i] = Vanillanote.csses["select_list"][i] ? Vanillanote.csses["select_list"][i] : {
+		vn.csses["select_list"][i] = vn.csses["select_list"][i] ? vn.csses["select_list"][i] : {
 			"display" : "block",
-			"height" : (Vanillanote.variables.sizeRates[i] * 45) + "px",
+			"height" : (vn.variables.sizeRates[i] * 45) + "px",
 			"margin" : "0 !important",
-			"line-height" : (Vanillanote.variables.sizeRates[i] * 45) + "px !important",
+			"line-height" : (vn.variables.sizeRates[i] * 45) + "px !important",
 			"padding" : "3px 5px", 
 			"cursor" : "pointer",
 			"text-align" : "left",
 			"overflow" : "hidden",
 			};
 		
-		Vanillanote.csses["select_list_button"][i] = Vanillanote.csses["select_list_button"][i] ? Vanillanote.csses["select_list_button"][i] : {
-			"width" : (Vanillanote.variables.sizeRates[i] * 50) + "px",
-			"height" : (Vanillanote.variables.sizeRates[i] * 45) + "px",
-			"background-color" : Vanillanote.colors.color4[i],
+		vn.csses["select_list_button"][i] = vn.csses["select_list_button"][i] ? vn.csses["select_list_button"][i] : {
+			"width" : (vn.variables.sizeRates[i] * 50) + "px",
+			"height" : (vn.variables.sizeRates[i] * 45) + "px",
+			"background-color" : vn.colors.color4[i],
 			"display" : "inline-block",
 			"cursor" : "pointer",
 			"border-radius" : "5px",
-			"box-shadow" : "0px 0.25px 0.1em " + Vanillanote.colors.color7[i],
+			"box-shadow" : "0px 0.25px 0.1em " + vn.colors.color7[i],
 			};
 		
-		Vanillanote.csses["small_input_box"][i] = Vanillanote.csses["small_input_box"][i] ? Vanillanote.csses["small_input_box"][i] : {
-			"width" : (Vanillanote.variables.sizeRates[i] * 120) + "px",
-			"height" : (Vanillanote.variables.sizeRates[i] * 45) + "px",
-			"background-color" : Vanillanote.colors.color4[i],
+		vn.csses["small_input_box"][i] = vn.csses["small_input_box"][i] ? vn.csses["small_input_box"][i] : {
+			"width" : (vn.variables.sizeRates[i] * 120) + "px",
+			"height" : (vn.variables.sizeRates[i] * 45) + "px",
+			"background-color" : vn.colors.color4[i],
 			"float" : "left",
 			"overflow" : "hidden",
 			"cursor" : "pointer",
@@ -7689,13 +7690,13 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"text-align" : "center",
 			"margin" : "2px 2px",
 			"border-radius" : "5px",
-			"box-shadow" : "0.25px 0.25px 2px 0.25px " + Vanillanote.colors.color7[i],
+			"box-shadow" : "0.25px 0.25px 2px 0.25px " + vn.colors.color7[i],
 			};
 	
-		Vanillanote.csses["small_input"][i] = Vanillanote.csses["small_input"][i] ? Vanillanote.csses["small_input"][i] : {
+		vn.csses["small_input"][i] = vn.csses["small_input"][i] ? vn.csses["small_input"][i] : {
 			"width" : "30%",
 			"background-color" : "rgba(0,0,0,0)",
-			"color" : Vanillanote.colors.color1[i],
+			"color" : vn.colors.color1[i],
 			"border" : "none",
 			"border-radius" : "0",
 			"text-align" : "right",
@@ -7707,190 +7708,190 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"cursor" : "text",
 			"font-size" : "0.8em!important",
 			};
-		Vanillanote.csses["small_input:focus"][i] = Vanillanote.csses["small_input:focus"][i] ? Vanillanote.csses["small_input:focus"][i] : {
+		vn.csses["small_input:focus"][i] = vn.csses["small_input:focus"][i] ? vn.csses["small_input:focus"][i] : {
 			"outline" : "none",
 			};
-		Vanillanote.csses["small_input::-webkit-inner-spin-button"][i] = Vanillanote.csses["small_input::-webkit-inner-spin-button"][i] ? Vanillanote.csses["small_input::-webkit-inner-spin-button"][i] : {
+		vn.csses["small_input::-webkit-inner-spin-button"][i] = vn.csses["small_input::-webkit-inner-spin-button"][i] ? vn.csses["small_input::-webkit-inner-spin-button"][i] : {
 			"-webkit-appearance" : "none",
 			"margin" : "0",
 			};
-		Vanillanote.csses["small_input::-webkit-outer-spin-button"][i] = Vanillanote.csses["small_input::-webkit-outer-spin-button"][i] ? Vanillanote.csses["small_input::-webkit-outer-spin-button"][i] : {
+		vn.csses["small_input::-webkit-outer-spin-button"][i] = vn.csses["small_input::-webkit-outer-spin-button"][i] ? vn.csses["small_input::-webkit-outer-spin-button"][i] : {
 			"-webkit-appearance" : "none",
 			"margin" : "0",
 			};
-		Vanillanote.csses["small_input[type=number]"][i] = Vanillanote.csses["small_input[type=number]"][i] ? Vanillanote.csses["small_input[type=number]"][i] : {
+		vn.csses["small_input[type=number]"][i] = vn.csses["small_input[type=number]"][i] ? vn.csses["small_input[type=number]"][i] : {
 			"-moz-appearance" : "textfield",
 			};
 	
-		Vanillanote.csses["placeholder"][i] = Vanillanote.csses["placeholder"][i] ? Vanillanote.csses["placeholder"][i] : {
-			"width" : Vanillanote.variables.textareaOriginWidths[i],
+		vn.csses["placeholder"][i] = vn.csses["placeholder"][i] ? vn.csses["placeholder"][i] : {
+			"width" : vn.variables.textareaOriginWidths[i],
 			"padding" : "10px",
-			"background-color" : placeholderBackgroundColor ? placeholderBackgroundColor : getRGBAFromHex(Vanillanote.colors.color3[i], 0.8),
-			"color" : placeholderColor ? placeholderColor : Vanillanote.colors.color1[i],
+			"background-color" : placeholderBackgroundColor ? placeholderBackgroundColor : getRGBAFromHex(vn.colors.color3[i], 0.8),
+			"color" : placeholderColor ? placeholderColor : vn.colors.color1[i],
 			"display" : "none",
 			"position" : "absolute",
 			"z-index" : "100",
 			"font-family" : defaultToolFontFamily,
 			};
 			
-		Vanillanote.csses["help_main"][i] = Vanillanote.csses["help_main"][i] ? Vanillanote.csses["help_main"][i] : {
-			"max-height" : Vanillanote.variables.textareaOriginHeights[i],
-			"color" : Vanillanote.colors.color10[i],
+		vn.csses["help_main"][i] = vn.csses["help_main"][i] ? vn.csses["help_main"][i] : {
+			"max-height" : vn.variables.textareaOriginHeights[i],
+			"color" : vn.colors.color10[i],
 			"overflow-y" : "auto",
 			};
 	
-		Vanillanote.csses["modal_back"][i] = Vanillanote.csses["modal_back"][i] ? Vanillanote.csses["modal_back"][i] : {
+		vn.csses["modal_back"][i] = vn.csses["modal_back"][i] ? vn.csses["modal_back"][i] : {
 			"background-color" : "rgba(0,0,0,0.5)",
 			"display" : "none",
 			"position" : "absolute",
 			"z-index" : "300",
 			"font-family" : defaultToolFontFamily,
-			"color" : Vanillanote.colors.color1[i],
-			"font-size" : (Vanillanote.variables.sizeRates[i] * (isNoteByMobile ? 18 : 16)) + "px",
+			"color" : vn.colors.color1[i],
+			"font-size" : (vn.variables.sizeRates[i] * (isNoteByMobile ? 18 : 16)) + "px",
 			};
 			
-		Vanillanote.csses["modal_body"][i] = Vanillanote.csses["modal_body"][i] ? Vanillanote.csses["modal_body"][i] : {
+		vn.csses["modal_body"][i] = vn.csses["modal_body"][i] ? vn.csses["modal_body"][i] : {
 			"width" : "80%",
 			"margin" : "0 auto",
 			"display" : "none",
 			"text-align" : "left",
-			"border" : "solid 1px " + Vanillanote.colors.color6[i],
+			"border" : "solid 1px " + vn.colors.color6[i],
 			"border-radius" : "20px",
-			"background-color" : Vanillanote.colors.color2[i],
+			"background-color" : vn.colors.color2[i],
 			"" : "",
 			};
 		
-		Vanillanote.csses["modal_header"][i] = Vanillanote.csses["modal_header"][i] ? Vanillanote.csses["modal_header"][i] : {
+		vn.csses["modal_header"][i] = vn.csses["modal_header"][i] ? vn.csses["modal_header"][i] : {
 			"text-align" : "left",
-			"padding-top" : (Vanillanote.variables.sizeRates[i] * 20) + "px",
-			"padding-right" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"padding-bottom" : (Vanillanote.variables.sizeRates[i] * 20) + "px",
-			"padding-left" : (Vanillanote.variables.sizeRates[i] * 20) + "px",
-			"margin-bottom" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"background-color" : Vanillanote.colors.color4[i],
+			"padding-top" : (vn.variables.sizeRates[i] * 20) + "px",
+			"padding-right" : (vn.variables.sizeRates[i] * 10) + "px",
+			"padding-bottom" : (vn.variables.sizeRates[i] * 20) + "px",
+			"padding-left" : (vn.variables.sizeRates[i] * 20) + "px",
+			"margin-bottom" : (vn.variables.sizeRates[i] * 10) + "px",
+			"background-color" : vn.colors.color4[i],
 			"border-radius" : "20px 20px 0 0",
 			"font-weight" : "bold",
 			"font-size" : "1.05em",
 			};
 		
-		Vanillanote.csses["modal_footer"][i] = Vanillanote.csses["modal_footer"][i] ? Vanillanote.csses["modal_footer"][i] : {
+		vn.csses["modal_footer"][i] = vn.csses["modal_footer"][i] ? vn.csses["modal_footer"][i] : {
 			"text-align" : "right",
-			"margin-top" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"padding-top" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"padding-right" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"padding-bottom" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"padding-left" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"border-top" : "1px solid " + Vanillanote.colors.color6[i],
+			"margin-top" : (vn.variables.sizeRates[i] * 10) + "px",
+			"padding-top" : (vn.variables.sizeRates[i] * 10) + "px",
+			"padding-right" : (vn.variables.sizeRates[i] * 10) + "px",
+			"padding-bottom" : (vn.variables.sizeRates[i] * 10) + "px",
+			"padding-left" : (vn.variables.sizeRates[i] * 10) + "px",
+			"border-top" : "1px solid " + vn.colors.color6[i],
 			};
 			
-		Vanillanote.csses["modal_explain"][i] = Vanillanote.csses["modal_explain"][i] ? Vanillanote.csses["modal_explain"][i] : {
+		vn.csses["modal_explain"][i] = vn.csses["modal_explain"][i] ? vn.csses["modal_explain"][i] : {
 			"font-size" : "0.95em",
 			"text-align" : "left",
-			"padding-top" : (Vanillanote.variables.sizeRates[i] * 20) + "px",
-			"padding-bottom" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"padding-left" : (Vanillanote.variables.sizeRates[i] * 20) + "px",
+			"padding-top" : (vn.variables.sizeRates[i] * 20) + "px",
+			"padding-bottom" : (vn.variables.sizeRates[i] * 10) + "px",
+			"padding-left" : (vn.variables.sizeRates[i] * 20) + "px",
 			"display" : "inline-block",
-			"color": Vanillanote.colors.color10[i],
+			"color": vn.colors.color10[i],
 			"font-family" : defaultToolFontFamily,
 			};
 	
-		Vanillanote.csses["modal_input"][i] = Vanillanote.csses["modal_input"][i] ? Vanillanote.csses["modal_input"][i] : {
+		vn.csses["modal_input"][i] = vn.csses["modal_input"][i] ? vn.csses["modal_input"][i] : {
 			"display" : "block",
 			"width" : "80%",
 			"background-color" : "rgba(0,0,0,0)",
 			"font-family" : defaultToolFontFamily,
-		    "color": Vanillanote.colors.color10[i],
+		    "color": vn.colors.color10[i],
 			"border" : "none",
 			"border-radius" : "0",
-			"border-bottom" : "1px solid " + Vanillanote.colors.color6[i],
-			"margin-bottom" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"margin-left" : (Vanillanote.variables.sizeRates[i] * 20) + "px",
+			"border-bottom" : "1px solid " + vn.colors.color6[i],
+			"margin-bottom" : (vn.variables.sizeRates[i] * 10) + "px",
+			"margin-left" : (vn.variables.sizeRates[i] * 20) + "px",
 			"font-size" : "1.05em",
 			"animation" : "vanillanote-modal-input 0.7s forwards"
 			};
-		Vanillanote.csses["modal_input:focus"][i] = Vanillanote.csses["modal_input:focus"][i] ? Vanillanote.csses["modal_input:focus"][i] : {
+		vn.csses["modal_input:focus"][i] = vn.csses["modal_input:focus"][i] ? vn.csses["modal_input:focus"][i] : {
 			"outline" : "none",
 			};
-		Vanillanote.csses["modal_input[readonly]"][i] = Vanillanote.csses["modal_input[readonly]"][i] ? Vanillanote.csses["modal_input[readonly]"][i] : {
+		vn.csses["modal_input[readonly]"][i] = vn.csses["modal_input[readonly]"][i] ? vn.csses["modal_input[readonly]"][i] : {
 			"background-color": "rgba(0,0,0,0.1)",
 			};
 
-		Vanillanote.csses["modal_small_input"][i] = Vanillanote.csses["modal_small_input"][i] ? Vanillanote.csses["modal_small_input"][i] : {
+		vn.csses["modal_small_input"][i] = vn.csses["modal_small_input"][i] ? vn.csses["modal_small_input"][i] : {
 			"display" : "inline-block",
 			"width" : "20%",
 			"background-color" : "rgba(0,0,0,0)",
 			"font-family" : defaultToolFontFamily,
-		    "color": Vanillanote.colors.color10[i],
+		    "color": vn.colors.color10[i],
 			"border" : "none",
 		    "border-radius" : "0",
-			"border-bottom" : "1px solid " + Vanillanote.colors.color6[i],
-			"margin-bottom" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"margin-left" : (Vanillanote.variables.sizeRates[i] * 20) + "px",
+			"border-bottom" : "1px solid " + vn.colors.color6[i],
+			"margin-bottom" : (vn.variables.sizeRates[i] * 10) + "px",
+			"margin-left" : (vn.variables.sizeRates[i] * 20) + "px",
 			"font-size" : "1.05em",
 			"animation" : "vanillanote-modal-small-input 1s forwards"
 			};
-		Vanillanote.csses["modal_small_input:focus"][i] = Vanillanote.csses["modal_small_input:focus"][i] ? Vanillanote.csses["modal_small_input:focus"][i] : {
+		vn.csses["modal_small_input:focus"][i] = vn.csses["modal_small_input:focus"][i] ? vn.csses["modal_small_input:focus"][i] : {
 			"outline" : "none",
 			};
-		Vanillanote.csses["modal_small_input::-webkit-inner-spin-button"][i] = Vanillanote.csses["modal_small_input::-webkit-inner-spin-button"][i] ? Vanillanote.csses["modal_small_input::-webkit-inner-spin-button"][i] : {
+		vn.csses["modal_small_input::-webkit-inner-spin-button"][i] = vn.csses["modal_small_input::-webkit-inner-spin-button"][i] ? vn.csses["modal_small_input::-webkit-inner-spin-button"][i] : {
 			"appearance" : "none",
 			"-moz-appearance" : "none",
 			"-webkit-appearance" : "none",
 			};
-		Vanillanote.csses["modal_small_input::-webkit-outer-spin-button"][i] = Vanillanote.csses["modal_small_input::-webkit-outer-spin-button"][i] ? Vanillanote.csses["modal_small_input::-webkit-outer-spin-button"][i] : {
+		vn.csses["modal_small_input::-webkit-outer-spin-button"][i] = vn.csses["modal_small_input::-webkit-outer-spin-button"][i] ? vn.csses["modal_small_input::-webkit-outer-spin-button"][i] : {
 			"-webkit-appearance" : "none",
 			"margin" : "0",
 			};
-		Vanillanote.csses["modal_small_input[type=number]"][i] = Vanillanote.csses["modal_small_input[type=number]"][i] ? Vanillanote.csses["modal_small_input[type=number]"][i] : {
+		vn.csses["modal_small_input[type=number]"][i] = vn.csses["modal_small_input[type=number]"][i] ? vn.csses["modal_small_input[type=number]"][i] : {
 			"-moz-appearance" : "textfield",
 			};
-		Vanillanote.csses["modal_small_input[readonly]"][i] = Vanillanote.csses["modal_small_input[readonly]"][i] ? Vanillanote.csses["modal_small_input[readonly]"][i] : {
-			"background-color": Vanillanote.colors.color4[i],
+		vn.csses["modal_small_input[readonly]"][i] = vn.csses["modal_small_input[readonly]"][i] ? vn.csses["modal_small_input[readonly]"][i] : {
+			"background-color": vn.colors.color4[i],
 			};
 			
-		Vanillanote.csses["modal_input_file"][i] = Vanillanote.csses["modal_input_file"][i] ? Vanillanote.csses["modal_input_file"][i] : {
+		vn.csses["modal_input_file"][i] = vn.csses["modal_input_file"][i] ? vn.csses["modal_input_file"][i] : {
 			"display" : "none!important",
 			};
 
-		Vanillanote.csses["att_valid_checktext"][i] = Vanillanote.csses["att_valid_checktext"][i] ? Vanillanote.csses["att_valid_checktext"][i] : {
+		vn.csses["att_valid_checktext"][i] = vn.csses["att_valid_checktext"][i] ? vn.csses["att_valid_checktext"][i] : {
 			"padding-right" : "10px",
 			"font-size" : "0.7em",
 			};
 		
-		Vanillanote.csses["att_link_is_blank_label"][i] = Vanillanote.csses["att_link_is_blank_label"][i] ? Vanillanote.csses["att_link_is_blank_label"][i] : {
+		vn.csses["att_link_is_blank_label"][i] = vn.csses["att_link_is_blank_label"][i] ? vn.csses["att_link_is_blank_label"][i] : {
 			"font-size" : "0.95em",
 			"text-align" : "left",
 			"display" : "inline-block",
 			"height" : "25px",
 			"cursor" : "pointer",
-			"margin-top" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"margin-bottom" : (Vanillanote.variables.sizeRates[i] * 10) + "px",
-			"margin-left" : (Vanillanote.variables.sizeRates[i] * 15) + "px",
-			"color": Vanillanote.colors.color10[i],
+			"margin-top" : (vn.variables.sizeRates[i] * 10) + "px",
+			"margin-bottom" : (vn.variables.sizeRates[i] * 10) + "px",
+			"margin-left" : (vn.variables.sizeRates[i] * 15) + "px",
+			"color": vn.colors.color10[i],
 			};
 		
-		Vanillanote.csses["input_checkbox"][i] = Vanillanote.csses["input_checkbox"][i] ? Vanillanote.csses["input_checkbox"][i] : {
+		vn.csses["input_checkbox"][i] = vn.csses["input_checkbox"][i] ? vn.csses["input_checkbox"][i] : {
 			"cursor" : "pointer",
 			"display": "inline-block",
 		    "width" : "12px",
 		    "height" : "12px",
 		    "border-radius" : "3px",
-		    "border" : "solid "+Vanillanote.colors.color6[i],
+		    "border" : "solid "+vn.colors.color6[i],
 		    "border-width" : "1px 2px 2px 1px",
 		    "transform" : "rotate(0deg)",
 		    "transition": "transform 0.3s",
 			};
-		Vanillanote.csses["input_checkbox:focus"][i] = Vanillanote.csses["input_checkbox:focus"][i] ? Vanillanote.csses["input_checkbox:focus"][i] : {
+		vn.csses["input_checkbox:focus"][i] = vn.csses["input_checkbox:focus"][i] ? vn.csses["input_checkbox:focus"][i] : {
 			"outline" : "none!important",
 			};
-		Vanillanote.csses["input_checkbox[disabled]"][i] = Vanillanote.csses["input_checkbox[disabled]"][i] ? Vanillanote.csses["input_checkbox[disabled]"][i] : {
-			"background-color": Vanillanote.colors.color4[i],
+		vn.csses["input_checkbox[disabled]"][i] = vn.csses["input_checkbox[disabled]"][i] ? vn.csses["input_checkbox[disabled]"][i] : {
+			"background-color": vn.colors.color4[i],
 			};
 			
-		Vanillanote.csses["smallpx_input"][i] = Vanillanote.csses["smallpx_input"][i] ? Vanillanote.csses["smallpx_input"][i] : {
+		vn.csses["smallpx_input"][i] = vn.csses["smallpx_input"][i] ? vn.csses["smallpx_input"][i] : {
 			"width" : "40px",
 			"background-color" : "rgba(0,0,0,0)",
-			"color" : Vanillanote.colors.color1[i],
+			"color" : vn.colors.color1[i],
 			"border" : "none",
 			"border-radius" : "5px",
 			"text-align" : "right",
@@ -7899,71 +7900,71 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"margin-left" : "5px",
 			"font-family" : defaultToolFontFamily,
 			};
-		Vanillanote.csses["smallpx_input:focus"][i] = Vanillanote.csses["smallpx_input:focus"][i] ? Vanillanote.csses["smallpx_input:focus"][i] : {
+		vn.csses["smallpx_input:focus"][i] = vn.csses["smallpx_input:focus"][i] ? vn.csses["smallpx_input:focus"][i] : {
 			"outline" : "none",
 			};
-		Vanillanote.csses["smallpx_input::-webkit-inner-spin-button"][i] = Vanillanote.csses["smallpx_input::-webkit-inner-spin-button"][i] ? Vanillanote.csses["smallpx_input::-webkit-inner-spin-button"][i] : {
+		vn.csses["smallpx_input::-webkit-inner-spin-button"][i] = vn.csses["smallpx_input::-webkit-inner-spin-button"][i] ? vn.csses["smallpx_input::-webkit-inner-spin-button"][i] : {
 			"appearance" : "none",
 			"-moz-appearance" : "none",
 			"-webkit-appearance" : "none",
 			};
 			
-		Vanillanote.csses["input_radio"][i] = Vanillanote.csses["input_radio"][i] ? Vanillanote.csses["input_radio"][i] : {
+		vn.csses["input_radio"][i] = vn.csses["input_radio"][i] ? vn.csses["input_radio"][i] : {
 			"cursor" : "pointer",
 			"display": "inline-block",
 		    "width" : "12px",
 		    "height" : "12px",
 		    "border-radius" : "50%",
-		    "border" : "solid 1px "+Vanillanote.colors.color6[i],
+		    "border" : "solid 1px "+vn.colors.color6[i],
 		    "transition": "transform 0.4s, background-color 0.6s;",
 			};
-		Vanillanote.csses["input_radio:focus"][i] = Vanillanote.csses["input_radio:focus"][i] ? Vanillanote.csses["input_radio:focus"][i] : {
+		vn.csses["input_radio:focus"][i] = vn.csses["input_radio:focus"][i] ? vn.csses["input_radio:focus"][i] : {
 			"outline" : "none!important",
 			};
-		Vanillanote.csses["input_radio:checked"][i] = Vanillanote.csses["input_radio:checked"][i] ? Vanillanote.csses["input_radio:checked"][i] : {
-		    "background-color": Vanillanote.colors.color5[i],
+		vn.csses["input_radio:checked"][i] = vn.csses["input_radio:checked"][i] ? vn.csses["input_radio:checked"][i] : {
+		    "background-color": vn.colors.color5[i],
 		    "transform": "rotateY( 180deg )",
 		    "transition": "transform 0.3s, background-color 0.5s;",
 			};
-		Vanillanote.csses["input_radio[disabled]"][i] = Vanillanote.csses["input_radio[disabled]"][i] ? Vanillanote.csses["input_radio[disabled]"][i] : {
-			"background-color": Vanillanote.colors.color4[i],
+		vn.csses["input_radio[disabled]"][i] = vn.csses["input_radio[disabled]"][i] ? vn.csses["input_radio[disabled]"][i] : {
+			"background-color": vn.colors.color4[i],
 			};
 			
-		Vanillanote.csses["drag_drop_div"][i] = Vanillanote.csses["drag_drop_div"][i] ? Vanillanote.csses["drag_drop_div"][i] : {
+		vn.csses["drag_drop_div"][i] = vn.csses["drag_drop_div"][i] ? vn.csses["drag_drop_div"][i] : {
 			"width" : "100%",
-			"height" : Vanillanote.variables.sizeRates[i] * 120 + "px",
+			"height" : vn.variables.sizeRates[i] * 120 + "px",
 			"display" : "inline-block",
 			"margin-top" : "10px",
 			"border-radius" : "5px",
-			"background-color" : Vanillanote.colors.color4[i],
-			"border" : "solid 1px"+Vanillanote.colors.color6[i],
-			"line-height" : Vanillanote.variables.sizeRates[i] * 130 + "px",
+			"background-color" : vn.colors.color4[i],
+			"border" : "solid 1px"+vn.colors.color6[i],
+			"line-height" : vn.variables.sizeRates[i] * 130 + "px",
 			"font-size" : "0.8em",
-			"color" : getRGBAFromHex(Vanillanote.colors.color1[i], 0.8),
+			"color" : getRGBAFromHex(vn.colors.color1[i], 0.8),
 			"overflow-y" : "scroll",
 			"cursor" : "pointer",
 			};
 			
-		Vanillanote.csses["image_view_div"][i] = Vanillanote.csses["image_view_div"][i] ? Vanillanote.csses["image_view_div"][i] : {
+		vn.csses["image_view_div"][i] = vn.csses["image_view_div"][i] ? vn.csses["image_view_div"][i] : {
 			"width" : "80%",
-			"height" : Vanillanote.variables.sizeRates[i] * 120 + "px",
+			"height" : vn.variables.sizeRates[i] * 120 + "px",
 			"display" : "inline-block",
 			"margin-top" : "10px",
 			"border-radius" : "5px",
-			"background-color" : Vanillanote.colors.color4[i],
-			"border" : "solid 1px"+Vanillanote.colors.color6[i],
-			"line-height" : Vanillanote.variables.sizeRates[i] * 130 + "px",
+			"background-color" : vn.colors.color4[i],
+			"border" : "solid 1px"+vn.colors.color6[i],
+			"line-height" : vn.variables.sizeRates[i] * 130 + "px",
 			"font-size" : "0.8em",
-			"color" : getRGBAFromHex(Vanillanote.colors.color1[i], 0.8),
+			"color" : getRGBAFromHex(vn.colors.color1[i], 0.8),
 			"cursor" : "pointer",
 			"overflow" : "hidden",
 			"white-space" : "nowrap",
 			"scroll-behavior" : "smooth",
 			};
 			
-		Vanillanote.csses["color_button"][i] = Vanillanote.csses["color_button"][i] ? Vanillanote.csses["color_button"][i] : {
-			"width" : (Vanillanote.variables.sizeRates[i] * 50) * 0.5 + "px",
-			"height" : (Vanillanote.variables.sizeRates[i] * 45) * 0.5 + "px",
+		vn.csses["color_button"][i] = vn.csses["color_button"][i] ? vn.csses["color_button"][i] : {
+			"width" : (vn.variables.sizeRates[i] * 50) * 0.5 + "px",
+			"height" : (vn.variables.sizeRates[i] * 45) * 0.5 + "px",
 			"float" : "left",
 			"display" : "inline-block",
 			"cursor" : "pointer",
@@ -7971,45 +7972,45 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"border-radius" : "5px",
 			"margin-right" : "3px",
 			"margin-bottom" : "5%",
-			"border" : "1px solid " + Vanillanote.colors.color1[i],
-			"box-shadow" : "0.25px 0.25px 2px 0.25px " + Vanillanote.colors.color7[i],
+			"border" : "1px solid " + vn.colors.color1[i],
+			"box-shadow" : "0.25px 0.25px 2px 0.25px " + vn.colors.color7[i],
 			"position" : "relative",
 			};
 			
-		Vanillanote.csses["color_input"][i] = Vanillanote.csses["color_input"][i] ? Vanillanote.csses["color_input"][i] : {
+		vn.csses["color_input"][i] = vn.csses["color_input"][i] ? vn.csses["color_input"][i] : {
 			"display" : "inline-block",
 			"background-color" : "rgba(0,0,0,0)",
-			"width" : (Vanillanote.variables.sizeRates[i] * 25) + "px",
-			"height" : (Vanillanote.variables.sizeRates[i] * 40) + "px",
+			"width" : (vn.variables.sizeRates[i] * 25) + "px",
+			"height" : (vn.variables.sizeRates[i] * 40) + "px",
 			"font-size" : "0.7em!important",
-		    "color": Vanillanote.colors.color1[i],
+		    "color": vn.colors.color1[i],
 			"border" : "none",
 			"border-radius" : "5px",
 			"text-align" : "right",
-			"margin-right" : (Vanillanote.variables.sizeRates[i] * 8) + "px",
-			"margin-left" : (Vanillanote.variables.sizeRates[i] * 2) + "px",
+			"margin-right" : (vn.variables.sizeRates[i] * 8) + "px",
+			"margin-left" : (vn.variables.sizeRates[i] * 2) + "px",
 			"font-family" : defaultToolFontFamily,
 			};
-		Vanillanote.csses["color_input:focus"][i] = Vanillanote.csses["color_input:focus"][i] ? Vanillanote.csses["color_input:focus"][i] : {
+		vn.csses["color_input:focus"][i] = vn.csses["color_input:focus"][i] ? vn.csses["color_input:focus"][i] : {
 			"outline" : "none",
 			};
-		Vanillanote.csses["color_input::-webkit-inner-spin-button"][i] = Vanillanote.csses["color_input::-webkit-inner-spin-button"][i] ? Vanillanote.csses["color_input::-webkit-inner-spin-button"][i] : {
+		vn.csses["color_input::-webkit-inner-spin-button"][i] = vn.csses["color_input::-webkit-inner-spin-button"][i] ? vn.csses["color_input::-webkit-inner-spin-button"][i] : {
 			"appearance" : "none",
 			"-moz-appearance" : "none",
 			"-webkit-appearance" : "none",
 			};
 			
-		Vanillanote.csses["color_explain"][i] = Vanillanote.csses["color_explain"][i] ? Vanillanote.csses["color_explain"][i] : {
+		vn.csses["color_explain"][i] = vn.csses["color_explain"][i] ? vn.csses["color_explain"][i] : {
 			"display" : "inline-block",
-			"height" : (Vanillanote.variables.sizeRates[i] * 25) + "px",
-			"color": Vanillanote.colors.color1[i],
+			"height" : (vn.variables.sizeRates[i] * 25) + "px",
+			"color": vn.colors.color1[i],
 			"font-family" : defaultToolFontFamily,
 			"font-size" : "0.7em",
 			};
 		
-		Vanillanote.csses["normal_button"][i] = Vanillanote.csses["normal_button"][i] ? Vanillanote.csses["normal_button"][i] : {
-			"min-width" : (Vanillanote.variables.sizeRates[i] * 50) + "px",
-			"height" : (Vanillanote.variables.sizeRates[i] * 45) + "px",
+		vn.csses["normal_button"][i] = vn.csses["normal_button"][i] ? vn.csses["normal_button"][i] : {
+			"min-width" : (vn.variables.sizeRates[i] * 50) + "px",
+			"height" : (vn.variables.sizeRates[i] * 45) + "px",
 			"font-size" : "0.8em",
 			"padding" : "0 15px",
 			"display" : "inline-block",
@@ -8017,40 +8018,40 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"text-align" : "center",
 			"border-radius" : "5px",
 			"border" : "none",
-			"box-shadow" : "0.25px 0.25px 2px 0.25px " + Vanillanote.colors.color7[i],
-			"color" : Vanillanote.colors.color1[i],
+			"box-shadow" : "0.25px 0.25px 2px 0.25px " + vn.colors.color7[i],
+			"color" : vn.colors.color1[i],
 			"font-family" : defaultToolFontFamily,
-			"background-color" : Vanillanote.colors.color4[i],
+			"background-color" : vn.colors.color4[i],
 			};
 			
-		Vanillanote.csses["opacity_button"][i] = Vanillanote.csses["opacity_button"][i] ? Vanillanote.csses["opacity_button"][i] : {
-			"min-width" : (Vanillanote.variables.sizeRates[i] * 40) + "px",
-			"height" : (Vanillanote.variables.sizeRates[i] * 40) + "px",
+		vn.csses["opacity_button"][i] = vn.csses["opacity_button"][i] ? vn.csses["opacity_button"][i] : {
+			"min-width" : (vn.variables.sizeRates[i] * 40) + "px",
+			"height" : (vn.variables.sizeRates[i] * 40) + "px",
 			"font-size" : "0.7em",
 			"display" : "inline-block",
 			"cursor" : "pointer",
 			"text-align" : "center",
 			"border-radius" : "5px",
 			"border" : "none",
-			"color" : Vanillanote.colors.color1[i],
+			"color" : vn.colors.color1[i],
 			"font-family" : defaultToolFontFamily,
-			"background-color" : getRGBAFromHex(Vanillanote.colors.color4[i], 0.5),
+			"background-color" : getRGBAFromHex(vn.colors.color4[i], 0.5),
 			};
 			
-		Vanillanote.csses["small_text_box"][i] = Vanillanote.csses["small_text_box"][i] ? Vanillanote.csses["small_text_box"][i] : {
+		vn.csses["small_text_box"][i] = vn.csses["small_text_box"][i] ? vn.csses["small_text_box"][i] : {
 			"display" : "inline-block",
 			"padding" : "0 10px",
 			"font-size" : "0.8em",
-			"color" : Vanillanote.colors.color1[i],
+			"color" : vn.colors.color1[i],
 			},
 			
-		Vanillanote.csses["tooltip"][i] = Vanillanote.csses["tooltip"][i] ? Vanillanote.csses["tooltip"][i] : {
-			"width" : Vanillanote.variables.textareaOriginWidths[i],
+		vn.csses["tooltip"][i] = vn.csses["tooltip"][i] ? vn.csses["tooltip"][i] : {
+			"width" : vn.variables.textareaOriginWidths[i],
 			"max-width" : textareaMaxWidth,
 			"margin" : "0 auto",
 			"padding" : "2px 0",
-			"background-color" : Vanillanote.colors.color3[i],
-			"border" : "solid 1px " + Vanillanote.colors.color5[i],
+			"background-color" : vn.colors.color3[i],
+			"border" : "solid 1px " + vn.colors.color5[i],
 			"height": "0",
 			"overflow" : "hidden",
 			"opacity" : "0",
@@ -8063,117 +8064,117 @@ function createVanillanote(Vanillanote: Vanillanote) {
 			"font-family" : defaultToolFontFamily,
 			"font-size" : "0.9em",
 			},
-		Vanillanote.csses["tooltip_button"][i] = Vanillanote.csses["tooltip_button"][i] ? Vanillanote.csses["tooltip_button"][i] : {
-			"width" : (Vanillanote.variables.sizeRates[i] * 50) * 0.7 + "px",
-			"height" : (Vanillanote.variables.sizeRates[i] * 45) * 0.7 + "px",
+		vn.csses["tooltip_button"][i] = vn.csses["tooltip_button"][i] ? vn.csses["tooltip_button"][i] : {
+			"width" : (vn.variables.sizeRates[i] * 50) * 0.7 + "px",
+			"height" : (vn.variables.sizeRates[i] * 45) * 0.7 + "px",
 			"float" : "left",
 			"display" : "inline-block",
 			"cursor" : "pointer",
 			"text-align" : "center",
 			"margin" : "2px 2px",
 			"border-radius" : "5px",
-			"box-shadow" : "0.25px 0.25px 2px 0.25px " + Vanillanote.colors.color7[i],
-			"background-color" : Vanillanote.colors.color4[i],
+			"box-shadow" : "0.25px 0.25px 2px 0.25px " + vn.colors.color7[i],
+			"background-color" : vn.colors.color4[i],
 			"position" : "relative",
 			};
-		Vanillanote.csses["att_link_tooltip_href"][i] = Vanillanote.csses["att_link_tooltip_href"][i] ? Vanillanote.csses["att_link_tooltip_href"][i] : {
+		vn.csses["att_link_tooltip_href"][i] = vn.csses["att_link_tooltip_href"][i] ? vn.csses["att_link_tooltip_href"][i] : {
 			"cursor" : "pointer",
 			"float" : "left",
 			"padding" : "0 10px",
-			"color" : Vanillanote.colors.color11[i],
+			"color" : vn.colors.color11[i],
 			"text-decoration" : "underline",
 			"font-size" : "0.9em",
-			"line-height" : (Vanillanote.variables.sizeRates[i] * 45) * 0.8 + "px",
+			"line-height" : (vn.variables.sizeRates[i] * 45) * 0.8 + "px",
 			},
 			
-		Vanillanote.csses["on_button_on"][i] = Vanillanote.csses["on_button_on"][i] ? Vanillanote.csses["on_button_on"][i] : {
-			"background-color" : Vanillanote.colors.color5[i] + "!important",
-			"box-shadow" : "0.25px 0.25px 0.25px 0.25px " + Vanillanote.colors.color7[i],
+		vn.csses["on_button_on"][i] = vn.csses["on_button_on"][i] ? vn.csses["on_button_on"][i] : {
+			"background-color" : vn.colors.color5[i] + "!important",
+			"box-shadow" : "0.25px 0.25px 0.25px 0.25px " + vn.colors.color7[i],
 			},
 			
-		Vanillanote.csses["on_active"][i] = Vanillanote.csses["on_active"][i] ? Vanillanote.csses["on_active"][i] : {
-			"background-color" : Vanillanote.colors.color5[i] + "!important",
-			"box-shadow" : "0.25px 0.25px 0.25px 0.25px " + Vanillanote.colors.color7[i],
+		vn.csses["on_active"][i] = vn.csses["on_active"][i] ? vn.csses["on_active"][i] : {
+			"background-color" : vn.colors.color5[i] + "!important",
+			"box-shadow" : "0.25px 0.25px 0.25px 0.25px " + vn.colors.color7[i],
 			},
 			
-		Vanillanote.csses["on_mouseover"][i] = Vanillanote.csses["on_mouseover"][i] ? Vanillanote.csses["on_mouseover"][i] : {
-			"background-color" : Vanillanote.colors.color5[i] + "!important",
+		vn.csses["on_mouseover"][i] = vn.csses["on_mouseover"][i] ? vn.csses["on_mouseover"][i] : {
+			"background-color" : vn.colors.color5[i] + "!important",
 			},
 			
-		Vanillanote.csses["on_mouseout"][i] = Vanillanote.csses["on_mouseout"][i] ? Vanillanote.csses["on_mouseout"][i] : {
-			"background-color" : Vanillanote.colors.color4[i] + "!important",
+		vn.csses["on_mouseout"][i] = vn.csses["on_mouseout"][i] ? vn.csses["on_mouseout"][i] : {
+			"background-color" : vn.colors.color4[i] + "!important",
 			},
 			
-		Vanillanote.csses["on_display_inline"][i] = Vanillanote.csses["on_display_inline"][i] ? Vanillanote.csses["on_display_inline"][i] : {
+		vn.csses["on_display_inline"][i] = vn.csses["on_display_inline"][i] ? vn.csses["on_display_inline"][i] : {
 			"display":"inline"
 			},
 			
-		Vanillanote.csses["on_display_inline_block"][i] = Vanillanote.csses["on_display_inline_block"][i] ? Vanillanote.csses["on_display_inline_block"][i] : {
+		vn.csses["on_display_inline_block"][i] = vn.csses["on_display_inline_block"][i] ? vn.csses["on_display_inline_block"][i] : {
 			"display":"inline-block"
 			},
 			
-		Vanillanote.csses["on_display_block"][i] = Vanillanote.csses["on_display_block"][i] ? Vanillanote.csses["on_display_block"][i] : {
+		vn.csses["on_display_block"][i] = vn.csses["on_display_block"][i] ? vn.csses["on_display_block"][i] : {
 			"display":"block"
 			},
 			
-		Vanillanote.csses["on_display_none"][i] = Vanillanote.csses["on_display_none"][i] ? Vanillanote.csses["on_display_none"][i] : {
+		vn.csses["on_display_none"][i] = vn.csses["on_display_none"][i] ? vn.csses["on_display_none"][i] : {
 			"display":"none"
 			},
 			
 		//==================================================================================
 		//create element css text
 		//element css
-  		cssKeys = Object.keys(Vanillanote.csses);
+  		cssKeys = Object.keys(vn.csses);
   		for(var j = 0; j < cssKeys.length; j++) {
-			cssText = cssText + getCssClassText(i, cssKeys[j], (Vanillanote.csses as any)[cssKeys[j]][i]) + "\n";
+			cssText = cssText + getCssClassText(i, cssKeys[j], (vn.csses as any)[cssKeys[j]][i]) + "\n";
   		}
   		
 		//==================================================================================
 		//template
-		template = createElement(template, "div", Vanillanote.consts.CLASS_NAMES.template.id, Vanillanote.consts.CLASS_NAMES.template.className, i);
+		template = createElement(template, "div", vn.consts.CLASS_NAMES.template.id, vn.consts.CLASS_NAMES.template.className, i);
 		template.style.display = "none";
 		//==================================================================================
  		//textarea
-		textarea = createElementBasic(textarea, Vanillanote.variables.noteName+"-textarea", Vanillanote.consts.CLASS_NAMES.textarea.id, Vanillanote.consts.CLASS_NAMES.textarea.className, i);
+		textarea = createElementBasic(textarea, vn.variables.noteName+"-textarea", vn.consts.CLASS_NAMES.textarea.id, vn.consts.CLASS_NAMES.textarea.className, i);
 		textarea.setAttribute("contenteditable",true);
 		textarea.setAttribute("role","textbox");
 		textarea.setAttribute("aria-multiline",true);
 		textarea.setAttribute("spellcheck",true);
 		textarea.setAttribute("autocorrect",true);
-		textarea.setAttribute("name",getId(i, Vanillanote.consts.CLASS_NAMES.textarea.id));
-		textarea.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].textareaTooltip);	//COMMENT
+		textarea.setAttribute("name",getId(i, vn.consts.CLASS_NAMES.textarea.id));
+		textarea.setAttribute("title",vn.languageSet[vn.variables.languages[i]].textareaTooltip);	//COMMENT
 		
  		textarea.addEventListener("click", function(event: any) {
- 			consoleLog("Vanillanote.elementEvents." + "textarea_onBeforeClick", "params :" , "(event)", event, "(target)", event.target);
- 			if(!Vanillanote.elementEvents.textarea_onBeforeClick(event)) return;
+ 			consoleLog("vn.elementEvents." + "textarea_onBeforeClick", "params :" , "(event)", event, "(target)", event.target);
+ 			if(!vn.elementEvents.textarea_onBeforeClick(event)) return;
  			
  			consoleLog("textarea_onClick", "params :" , "(event)", event, "(target)", event.target);
  			elementsEvent["textarea_onClick"](event);
  			
- 			consoleLog("Vanillanote.elementEvents." + "textarea_onAfterClick", "params :" , "(event)", event, "(target)", event.target);
- 			Vanillanote.elementEvents.textarea_onAfterClick(event);
+ 			consoleLog("vn.elementEvents." + "textarea_onAfterClick", "params :" , "(event)", event, "(target)", event.target);
+ 			vn.elementEvents.textarea_onAfterClick(event);
  			event.stopImmediatePropagation();
  		});
  		textarea.addEventListener("focus", function(event: any) {
- 			consoleLog("Vanillanote.elementEvents." + "textarea_onBeforeFocus", "params :" , "(event)", event, "(target)", event.target);
- 			if(!Vanillanote.elementEvents.textarea_onBeforeFocus(event)) return;
+ 			consoleLog("vn.elementEvents." + "textarea_onBeforeFocus", "params :" , "(event)", event, "(target)", event.target);
+ 			if(!vn.elementEvents.textarea_onBeforeFocus(event)) return;
  			
  			consoleLog("textarea_onFocus", "params :" , "(event)", event, "(target)", event.target);
  			elementsEvent["textarea_onFocus"](event);
  			
- 			consoleLog("Vanillanote.elementEvents." + "textarea_onAfterFocus", "params :" , "(event)", event, "(target)", event.target);
- 			Vanillanote.elementEvents.textarea_onAfterFocus(event);
+ 			consoleLog("vn.elementEvents." + "textarea_onAfterFocus", "params :" , "(event)", event, "(target)", event.target);
+ 			vn.elementEvents.textarea_onAfterFocus(event);
  			event.stopImmediatePropagation();
  		});
- 		textarea.addEventListener(Vanillanote.variables.isIOS ? "mouseout" : "blur", function(event: any) {
- 			consoleLog("Vanillanote.elementEvents." + "textarea_onBeforeBlur", "params :" , "(event)", event, "(target)", event.target);
- 			if(!Vanillanote.elementEvents.textarea_onBeforeBlur(event)) return;
+ 		textarea.addEventListener(vn.variables.isIOS ? "mouseout" : "blur", function(event: any) {
+ 			consoleLog("vn.elementEvents." + "textarea_onBeforeBlur", "params :" , "(event)", event, "(target)", event.target);
+ 			if(!vn.elementEvents.textarea_onBeforeBlur(event)) return;
  			
  			consoleLog("textarea_onBlur", "params :" , "(event)", event, "(target)", event.target);
  			elementsEvent["textarea_onBlur"](event);
  			
- 			consoleLog("Vanillanote.elementEvents." + "textarea_onAfterBlur", "params :" , "(event)", event, "(target)", event.target);
- 			Vanillanote.elementEvents.textarea_onAfterBlur(event);
+ 			consoleLog("vn.elementEvents." + "textarea_onAfterBlur", "params :" , "(event)", event, "(target)", event.target);
+ 			vn.elementEvents.textarea_onAfterBlur(event);
  			event.stopImmediatePropagation();
  		});
  		textarea.addEventListener("keydown", function(event: any) {
@@ -8192,7 +8193,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
  	       	event.stopImmediatePropagation();
  	    });
 
- 		elementsEvent["note_observer"].observe(textarea, Vanillanote.variables.observerOptions);
+ 		elementsEvent["note_observer"].observe(textarea, vn.variables.observerOptions);
  		
  		//Create the first <p> tag
  		initTextarea(textarea);
@@ -8200,300 +8201,300 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		//==================================================================================
 		//tool
 		//==================================================================================
-		tool = createElement(tool, "div", Vanillanote.consts.CLASS_NAMES.tool.id, Vanillanote.consts.CLASS_NAMES.tool.className, i);
+		tool = createElement(tool, "div", vn.consts.CLASS_NAMES.tool.id, vn.consts.CLASS_NAMES.tool.className, i);
 		//==================================================================================
 		//tool toggle
-		toolToggleButton = createElementButton(toolToggleButton, "span", Vanillanote.consts.CLASS_NAMES.toolToggleButton.id, Vanillanote.consts.CLASS_NAMES.toolToggleButton.className, i, {"isIcon":true, "text":"arrow_drop_down"});
+		toolToggleButton = createElementButton(toolToggleButton, "span", vn.consts.CLASS_NAMES.toolToggleButton.id, vn.consts.CLASS_NAMES.toolToggleButton.className, i, {"isIcon":true, "text":"arrow_drop_down"});
 		//==================================================================================
 		//paragraph style
-		paragraphStyleSelect = createElementSelect(paragraphStyleSelect, "span", Vanillanote.consts.CLASS_NAMES.paragraphStyleSelect.id, Vanillanote.consts.CLASS_NAMES.paragraphStyleSelect.className, i, {"isIcon":true, "text":"auto_fix_high"});
-		paragraphStyleSelect.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].styleTooltip);	//COMMENT
-		paragraphStyleSelectBox = createElementSelectBox(paragraphStyleSelectBox, "div", Vanillanote.consts.CLASS_NAMES.paragraphStyleSelectBox.id, Vanillanote.consts.CLASS_NAMES.paragraphStyleSelectBox.className, i);
+		paragraphStyleSelect = createElementSelect(paragraphStyleSelect, "span", vn.consts.CLASS_NAMES.paragraphStyleSelect.id, vn.consts.CLASS_NAMES.paragraphStyleSelect.className, i, {"isIcon":true, "text":"auto_fix_high"});
+		paragraphStyleSelect.setAttribute("title",vn.languageSet[vn.variables.languages[i]].styleTooltip);	//COMMENT
+		paragraphStyleSelectBox = createElementSelectBox(paragraphStyleSelectBox, "div", vn.consts.CLASS_NAMES.paragraphStyleSelectBox.id, vn.consts.CLASS_NAMES.paragraphStyleSelectBox.className, i);
 		paragraphStyleSelect.appendChild(paragraphStyleSelectBox);
-		tempElement1 = createElementButton(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.styleNomal.id, Vanillanote.consts.CLASS_NAMES.styleNomal.className, i, {"isIcon":false, "text":"Normal"});
+		tempElement1 = createElementButton(tempElement1, "div", vn.consts.CLASS_NAMES.styleNomal.id, vn.consts.CLASS_NAMES.styleNomal.className, i, {"isIcon":false, "text":"Normal"});
 		tempElement1.setAttribute("data-tag-name","p");
 		paragraphStyleSelectBox.appendChild(tempElement1);
-		tempElement1 = createElementButton(tempElement1, "h1", Vanillanote.consts.CLASS_NAMES.styleHeader1.id, Vanillanote.consts.CLASS_NAMES.styleHeader1.className, i, {"isIcon":false, "text":"Header1"});
+		tempElement1 = createElementButton(tempElement1, "h1", vn.consts.CLASS_NAMES.styleHeader1.id, vn.consts.CLASS_NAMES.styleHeader1.className, i, {"isIcon":false, "text":"Header1"});
 		tempElement1.setAttribute("data-tag-name","H1");
 		paragraphStyleSelectBox.appendChild(tempElement1);
-		tempElement1 = createElementButton(tempElement1, "h2", Vanillanote.consts.CLASS_NAMES.styleHeader2.id, Vanillanote.consts.CLASS_NAMES.styleHeader2.className, i, {"isIcon":false, "text":"Header2"});
+		tempElement1 = createElementButton(tempElement1, "h2", vn.consts.CLASS_NAMES.styleHeader2.id, vn.consts.CLASS_NAMES.styleHeader2.className, i, {"isIcon":false, "text":"Header2"});
 		tempElement1.setAttribute("data-tag-name","H2");
 		paragraphStyleSelectBox.appendChild(tempElement1);
-		tempElement1 = createElementButton(tempElement1, "h3", Vanillanote.consts.CLASS_NAMES.styleHeader3.id, Vanillanote.consts.CLASS_NAMES.styleHeader3.className, i, {"isIcon":false, "text":"Header3"});
+		tempElement1 = createElementButton(tempElement1, "h3", vn.consts.CLASS_NAMES.styleHeader3.id, vn.consts.CLASS_NAMES.styleHeader3.className, i, {"isIcon":false, "text":"Header3"});
 		tempElement1.setAttribute("data-tag-name","H3");
 		paragraphStyleSelectBox.appendChild(tempElement1);
-		tempElement1 = createElementButton(tempElement1, "h4", Vanillanote.consts.CLASS_NAMES.styleHeader4.id, Vanillanote.consts.CLASS_NAMES.styleHeader4.className, i, {"isIcon":false, "text":"Header4"});
+		tempElement1 = createElementButton(tempElement1, "h4", vn.consts.CLASS_NAMES.styleHeader4.id, vn.consts.CLASS_NAMES.styleHeader4.className, i, {"isIcon":false, "text":"Header4"});
 		tempElement1.setAttribute("data-tag-name","H4");
 		paragraphStyleSelectBox.appendChild(tempElement1);
-		tempElement1 = createElementButton(tempElement1, "h5", Vanillanote.consts.CLASS_NAMES.styleHeader5.id, Vanillanote.consts.CLASS_NAMES.styleHeader5.className, i, {"isIcon":false, "text":"Header5"});
+		tempElement1 = createElementButton(tempElement1, "h5", vn.consts.CLASS_NAMES.styleHeader5.id, vn.consts.CLASS_NAMES.styleHeader5.className, i, {"isIcon":false, "text":"Header5"});
 		tempElement1.setAttribute("data-tag-name","H5");
 		paragraphStyleSelectBox.appendChild(tempElement1);
-		tempElement1 = createElementButton(tempElement1, "h6", Vanillanote.consts.CLASS_NAMES.styleHeader6.id, Vanillanote.consts.CLASS_NAMES.styleHeader6.className, i, {"isIcon":false, "text":"Header6"});
+		tempElement1 = createElementButton(tempElement1, "h6", vn.consts.CLASS_NAMES.styleHeader6.id, vn.consts.CLASS_NAMES.styleHeader6.className, i, {"isIcon":false, "text":"Header6"});
 		tempElement1.setAttribute("data-tag-name","H6");
 		paragraphStyleSelectBox.appendChild(tempElement1);
 		//==================================================================================
 		//bold
-		boldButton = createElementButton(boldButton, "span", Vanillanote.consts.CLASS_NAMES.boldButton.id, Vanillanote.consts.CLASS_NAMES.boldButton.className, i, {"isIcon":true, "text":"format_bold"});
-		boldButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].boldTooltip);	//COMMENT
+		boldButton = createElementButton(boldButton, "span", vn.consts.CLASS_NAMES.boldButton.id, vn.consts.CLASS_NAMES.boldButton.className, i, {"isIcon":true, "text":"format_bold"});
+		boldButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].boldTooltip);	//COMMENT
 		//==================================================================================
 		//under-line
-		underlineButton = createElementButton(underlineButton, "span", Vanillanote.consts.CLASS_NAMES.underlineButton.id, Vanillanote.consts.CLASS_NAMES.underlineButton.className, i, {"isIcon":true, "text":"format_underlined"});
-		underlineButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].underlineTooltip);	//COMMENT
+		underlineButton = createElementButton(underlineButton, "span", vn.consts.CLASS_NAMES.underlineButton.id, vn.consts.CLASS_NAMES.underlineButton.className, i, {"isIcon":true, "text":"format_underlined"});
+		underlineButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].underlineTooltip);	//COMMENT
 		//==================================================================================
 		//italic
-		italicButton = createElementButton(italicButton, "span", Vanillanote.consts.CLASS_NAMES.italicButton.id, Vanillanote.consts.CLASS_NAMES.italicButton.className, i, {"isIcon":true, "text":"format_italic"});
-		italicButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].italicTooltip);
+		italicButton = createElementButton(italicButton, "span", vn.consts.CLASS_NAMES.italicButton.id, vn.consts.CLASS_NAMES.italicButton.className, i, {"isIcon":true, "text":"format_italic"});
+		italicButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].italicTooltip);
 		//==================================================================================
 		//ul
-		ulButton = createElementButton(italicButton, "span", Vanillanote.consts.CLASS_NAMES.ulButton.id, Vanillanote.consts.CLASS_NAMES.ulButton.className, i, {"isIcon":true, "text":"format_list_bulleted"});
-		ulButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].ulTooltip);
+		ulButton = createElementButton(italicButton, "span", vn.consts.CLASS_NAMES.ulButton.id, vn.consts.CLASS_NAMES.ulButton.className, i, {"isIcon":true, "text":"format_list_bulleted"});
+		ulButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].ulTooltip);
 		ulButton.setAttribute("data-tag-name","UL");
 		//==================================================================================
 		//ol
-		olButton = createElementButton(ulButton, "span", Vanillanote.consts.CLASS_NAMES.olButton.id, Vanillanote.consts.CLASS_NAMES.olButton.className, i, {"isIcon":true, "text":"format_list_numbered"});
-		olButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].olTooltip);
+		olButton = createElementButton(ulButton, "span", vn.consts.CLASS_NAMES.olButton.id, vn.consts.CLASS_NAMES.olButton.className, i, {"isIcon":true, "text":"format_list_numbered"});
+		olButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].olTooltip);
 		olButton.setAttribute("data-tag-name","OL");
 		//==================================================================================
 		//text-align
-		textAlignSelect = createElementSelect(textAlignSelect, "span",  Vanillanote.consts.CLASS_NAMES.textAlignSelect.id, Vanillanote.consts.CLASS_NAMES.textAlignSelect.className, i, {"isIcon":true, "text":"notes"});
-		textAlignSelect.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].textAlignTooltip);	//COMMENT
-		textAlignSelectBox = createElementSelectBox(textAlignSelectBox, "div", Vanillanote.consts.CLASS_NAMES.textAlignSelectBox.id, Vanillanote.consts.CLASS_NAMES.textAlignSelectBox.className, i);
+		textAlignSelect = createElementSelect(textAlignSelect, "span",  vn.consts.CLASS_NAMES.textAlignSelect.id, vn.consts.CLASS_NAMES.textAlignSelect.className, i, {"isIcon":true, "text":"notes"});
+		textAlignSelect.setAttribute("title",vn.languageSet[vn.variables.languages[i]].textAlignTooltip);	//COMMENT
+		textAlignSelectBox = createElementSelectBox(textAlignSelectBox, "div", vn.consts.CLASS_NAMES.textAlignSelectBox.id, vn.consts.CLASS_NAMES.textAlignSelectBox.className, i);
 		textAlignSelect.appendChild(textAlignSelectBox);
-		tempElement1 = createElementButton(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.textAlignLeft.id, Vanillanote.consts.CLASS_NAMES.textAlignLeft.className, i, {"isIcon":true, "text":"format_align_left"});
+		tempElement1 = createElementButton(tempElement1, "span", vn.consts.CLASS_NAMES.textAlignLeft.id, vn.consts.CLASS_NAMES.textAlignLeft.className, i, {"isIcon":true, "text":"format_align_left"});
 		tempElement1.setAttribute("data-tag-style","text-align:left;");
 		textAlignSelectBox.appendChild(tempElement1);
-		tempElement1 = createElementButton(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.textAlignCenter.id, Vanillanote.consts.CLASS_NAMES.textAlignCenter.className, i, {"isIcon":true, "text":"format_align_center"});
+		tempElement1 = createElementButton(tempElement1, "span", vn.consts.CLASS_NAMES.textAlignCenter.id, vn.consts.CLASS_NAMES.textAlignCenter.className, i, {"isIcon":true, "text":"format_align_center"});
 		tempElement1.setAttribute("data-tag-style","text-align:center;");
 		textAlignSelectBox.appendChild(tempElement1);
-		tempElement1 = createElementButton(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.textAlignRight.id, Vanillanote.consts.CLASS_NAMES.textAlignRight.className, i, {"isIcon":true, "text":"format_align_right"});
+		tempElement1 = createElementButton(tempElement1, "span", vn.consts.CLASS_NAMES.textAlignRight.id, vn.consts.CLASS_NAMES.textAlignRight.className, i, {"isIcon":true, "text":"format_align_right"});
 		tempElement1.setAttribute("data-tag-style","text-align:right;");
 		textAlignSelectBox.appendChild(tempElement1);
 		//==================================================================================
 		//att link
-		attLinkButton = createElementButton(attLinkButton, "span", Vanillanote.consts.CLASS_NAMES.attLinkButton.id, Vanillanote.consts.CLASS_NAMES.attLinkButton.className, i, {"isIcon":true, "text":"link"});
-		attLinkButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attLinkTooltip);	//COMMENT
+		attLinkButton = createElementButton(attLinkButton, "span", vn.consts.CLASS_NAMES.attLinkButton.id, vn.consts.CLASS_NAMES.attLinkButton.className, i, {"isIcon":true, "text":"link"});
+		attLinkButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attLinkTooltip);	//COMMENT
 		//==================================================================================
 		//att file
-		attFileButton = createElementButton(attFileButton, "span", Vanillanote.consts.CLASS_NAMES.attFileButton.id, Vanillanote.consts.CLASS_NAMES.attFileButton.className, i, {"isIcon":true, "text":"attach_file"});
-		attFileButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attFileTooltip);	//COMMENT
+		attFileButton = createElementButton(attFileButton, "span", vn.consts.CLASS_NAMES.attFileButton.id, vn.consts.CLASS_NAMES.attFileButton.className, i, {"isIcon":true, "text":"attach_file"});
+		attFileButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attFileTooltip);	//COMMENT
 		//==================================================================================
 		//att image
-		attImageButton = createElementButton(attImageButton, "span", Vanillanote.consts.CLASS_NAMES.attImageButton.id, Vanillanote.consts.CLASS_NAMES.attImageButton.className, i, {"isIcon":true, "text":"image"});
-		attImageButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attImageTooltip);	//COMMENT
+		attImageButton = createElementButton(attImageButton, "span", vn.consts.CLASS_NAMES.attImageButton.id, vn.consts.CLASS_NAMES.attImageButton.className, i, {"isIcon":true, "text":"image"});
+		attImageButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attImageTooltip);	//COMMENT
 		//==================================================================================
 		//att video
-		attVideoButton = createElementButton(attVideoButton, "span", Vanillanote.consts.CLASS_NAMES.attVideoButton.id, Vanillanote.consts.CLASS_NAMES.attVideoButton.className, i, {"isIcon":true, "text":"videocam"});
-		attVideoButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attVideoTooltip);	//COMMENT
+		attVideoButton = createElementButton(attVideoButton, "span", vn.consts.CLASS_NAMES.attVideoButton.id, vn.consts.CLASS_NAMES.attVideoButton.className, i, {"isIcon":true, "text":"videocam"});
+		attVideoButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attVideoTooltip);	//COMMENT
 		//==================================================================================
 		//font size
-		fontSizeInputBox = createElementButton(fontSizeInputBox, "span", Vanillanote.consts.CLASS_NAMES.fontSizeInputBox.id, Vanillanote.consts.CLASS_NAMES.fontSizeInputBox.className, i, {"isIcon":true, "text":"format_size"});
-		fontSizeInput = createElementInput(fontSizeInput, Vanillanote.consts.CLASS_NAMES.fontSizeInput.id, Vanillanote.consts.CLASS_NAMES.fontSizeInput.className, i);
+		fontSizeInputBox = createElementButton(fontSizeInputBox, "span", vn.consts.CLASS_NAMES.fontSizeInputBox.id, vn.consts.CLASS_NAMES.fontSizeInputBox.className, i, {"isIcon":true, "text":"format_size"});
+		fontSizeInput = createElementInput(fontSizeInput, vn.consts.CLASS_NAMES.fontSizeInput.id, vn.consts.CLASS_NAMES.fontSizeInput.className, i);
 		fontSizeInput.setAttribute("type","number");
-		fontSizeInput.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].fontSizeTooltip);	//COMMENT
-		addClickEvent(fontSizeInput, Vanillanote.consts.CLASS_NAMES.fontSizeInput.id);
+		fontSizeInput.setAttribute("title",vn.languageSet[vn.variables.languages[i]].fontSizeTooltip);	//COMMENT
+		addClickEvent(fontSizeInput, vn.consts.CLASS_NAMES.fontSizeInput.id);
 		fontSizeInputBox.appendChild(fontSizeInput);
 		//==================================================================================
 		//letter spacing
-		letterSpacingInputBox = createElementButton(letterSpacingInputBox, "span", Vanillanote.consts.CLASS_NAMES.letterSpacingInputBox.id, Vanillanote.consts.CLASS_NAMES.letterSpacingInputBox.className, i, {"isIcon":true, "text":"swap_horiz"});
-		letterSpacingInput = createElementInput(letterSpacingInput, Vanillanote.consts.CLASS_NAMES.letterSpacingInput.id, Vanillanote.consts.CLASS_NAMES.letterSpacingInput.className, i);
+		letterSpacingInputBox = createElementButton(letterSpacingInputBox, "span", vn.consts.CLASS_NAMES.letterSpacingInputBox.id, vn.consts.CLASS_NAMES.letterSpacingInputBox.className, i, {"isIcon":true, "text":"swap_horiz"});
+		letterSpacingInput = createElementInput(letterSpacingInput, vn.consts.CLASS_NAMES.letterSpacingInput.id, vn.consts.CLASS_NAMES.letterSpacingInput.className, i);
 		letterSpacingInput.setAttribute("type","number");
-		letterSpacingInput.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].letterSpacingTooltip);	//COMMENT
-		addClickEvent(letterSpacingInput, Vanillanote.consts.CLASS_NAMES.letterSpacingInput.id);
+		letterSpacingInput.setAttribute("title",vn.languageSet[vn.variables.languages[i]].letterSpacingTooltip);	//COMMENT
+		addClickEvent(letterSpacingInput, vn.consts.CLASS_NAMES.letterSpacingInput.id);
 		letterSpacingInputBox.appendChild(letterSpacingInput);
 		//==================================================================================
 		//line height
-		lineHeightInputBox = createElementButton(lineHeightInputBox, "span", Vanillanote.consts.CLASS_NAMES.lineHeightInputBox.id, Vanillanote.consts.CLASS_NAMES.lineHeightInputBox.className, i, {"isIcon":true, "text":"height"});
-		lineHeightInput = createElementInput(lineHeightInput, Vanillanote.consts.CLASS_NAMES.lineHeightInput.id, Vanillanote.consts.CLASS_NAMES.lineHeightInput.className, i);
+		lineHeightInputBox = createElementButton(lineHeightInputBox, "span", vn.consts.CLASS_NAMES.lineHeightInputBox.id, vn.consts.CLASS_NAMES.lineHeightInputBox.className, i, {"isIcon":true, "text":"height"});
+		lineHeightInput = createElementInput(lineHeightInput, vn.consts.CLASS_NAMES.lineHeightInput.id, vn.consts.CLASS_NAMES.lineHeightInput.className, i);
 		lineHeightInput.setAttribute("type","number");
-		lineHeightInput.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].lineHeightTooltip);	//COMMENT
-		addClickEvent(lineHeightInput, Vanillanote.consts.CLASS_NAMES.lineHeightInput.id);
+		lineHeightInput.setAttribute("title",vn.languageSet[vn.variables.languages[i]].lineHeightTooltip);	//COMMENT
+		addClickEvent(lineHeightInput, vn.consts.CLASS_NAMES.lineHeightInput.id);
 		lineHeightInputBox.appendChild(lineHeightInput);
 		//==================================================================================
 		//font style(font family)
-		fontFamilySelect = createElementSelect(fontFamilySelect, "span", Vanillanote.consts.CLASS_NAMES.fontFamilySelect.id, Vanillanote.consts.CLASS_NAMES.fontFamilySelect.className, i, {"isIcon":false, "text":defaultFontFamiliy.length > 12 ? defaultFontFamiliy.substr(0,12) + "..." : defaultFontFamiliy});
+		fontFamilySelect = createElementSelect(fontFamilySelect, "span", vn.consts.CLASS_NAMES.fontFamilySelect.id, vn.consts.CLASS_NAMES.fontFamilySelect.className, i, {"isIcon":false, "text":defaultFontFamiliy.length > 12 ? defaultFontFamiliy.substr(0,12) + "..." : defaultFontFamiliy});
 		fontFamilySelect.setAttribute("style","font-family:" + defaultFontFamiliy + ";");
-		fontFamilySelect.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].fontFamilyTooltip);	//COMMENT
-		fontFamilySelectBox = createElementSelectBox(fontFamilySelectBox, "div", Vanillanote.consts.CLASS_NAMES.fontFamilySelectBox.id, Vanillanote.consts.CLASS_NAMES.fontFamilySelectBox.className, i);
+		fontFamilySelect.setAttribute("title",vn.languageSet[vn.variables.languages[i]].fontFamilyTooltip);	//COMMENT
+		fontFamilySelectBox = createElementSelectBox(fontFamilySelectBox, "div", vn.consts.CLASS_NAMES.fontFamilySelectBox.id, vn.consts.CLASS_NAMES.fontFamilySelectBox.className, i);
 		fontFamilySelect.appendChild(fontFamilySelectBox);
 		
 		for(var fontIdx = 0; fontIdx < defaultFontFamilies.length; fontIdx++) {
-			tempElement1 = createElementFontFamiliySelect(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.fontFamily.id + fontIdx, Vanillanote.consts.CLASS_NAMES.fontFamily.className, i, {"isIcon":false, "text":defaultFontFamilies[fontIdx]});
+			tempElement1 = createElementFontFamiliySelect(tempElement1, "div", vn.consts.CLASS_NAMES.fontFamily.id + fontIdx, vn.consts.CLASS_NAMES.fontFamily.className, i, {"isIcon":false, "text":defaultFontFamilies[fontIdx]});
 			tempElement1.setAttribute("data-font-family",defaultFontFamilies[fontIdx]);
 			tempElement1.setAttribute("style", "font-family:" + defaultFontFamilies[fontIdx] + ";");
 			fontFamilySelectBox.appendChild(tempElement1);
 		}
 		//==================================================================================
 		//color text select
-		colorTextSelect = createElementSelect(colorTextSelect, "span", Vanillanote.consts.CLASS_NAMES.colorTextSelect.id, Vanillanote.consts.CLASS_NAMES.colorTextSelect.className, i, {"isIcon":true, "text":"format_color_text", "iconStyle" : "-webkit-text-stroke: 0.5px black; font-size: 1.1em"});
-		colorTextSelect.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].colorTextTooltip);	//COMMENT
-		colorTextSelectBox = createElementSelectBox(colorTextSelectBox, "div", Vanillanote.consts.CLASS_NAMES.colorTextSelectBox.id, Vanillanote.consts.CLASS_NAMES.colorTextSelectBox.className, i);
+		colorTextSelect = createElementSelect(colorTextSelect, "span", vn.consts.CLASS_NAMES.colorTextSelect.id, vn.consts.CLASS_NAMES.colorTextSelect.className, i, {"isIcon":true, "text":"format_color_text", "iconStyle" : "-webkit-text-stroke: 0.5px black; font-size: 1.1em"});
+		colorTextSelect.setAttribute("title",vn.languageSet[vn.variables.languages[i]].colorTextTooltip);	//COMMENT
+		colorTextSelectBox = createElementSelectBox(colorTextSelectBox, "div", vn.consts.CLASS_NAMES.colorTextSelectBox.id, vn.consts.CLASS_NAMES.colorTextSelectBox.className, i);
 		colorTextSelect.appendChild(colorTextSelectBox);
-		tempElement1 = createElement(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.colorTextRExplain.id, Vanillanote.consts.CLASS_NAMES.colorTextRExplain.className, i, {"isIcon":false, "text":"R"});	//COMMENT
-		tempElement1.style.paddingLeft = (Vanillanote.variables.sizeRates[i] * 8) + "px";
+		tempElement1 = createElement(tempElement1, "span", vn.consts.CLASS_NAMES.colorTextRExplain.id, vn.consts.CLASS_NAMES.colorTextRExplain.className, i, {"isIcon":false, "text":"R"});	//COMMENT
+		tempElement1.style.paddingLeft = (vn.variables.sizeRates[i] * 8) + "px";
 		colorTextSelectBox.appendChild(tempElement1);
-		colorTextRInput = createElementInput(colorTextRInput, Vanillanote.consts.CLASS_NAMES.colorTextRInput.id, Vanillanote.consts.CLASS_NAMES.colorTextRInput.className, i);
+		colorTextRInput = createElementInput(colorTextRInput, vn.consts.CLASS_NAMES.colorTextRInput.id, vn.consts.CLASS_NAMES.colorTextRInput.className, i);
 		colorTextRInput.setAttribute("maxlength", "2");
-		addClickEvent(colorTextRInput, Vanillanote.consts.CLASS_NAMES.colorTextRInput.id);
+		addClickEvent(colorTextRInput, vn.consts.CLASS_NAMES.colorTextRInput.id);
 		colorTextSelectBox.appendChild(colorTextRInput);
-		tempElement1 = createElement(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.colorTextGExplain.id, Vanillanote.consts.CLASS_NAMES.colorTextGExplain.className, i, {"isIcon":false, "text":"G"});	//COMMENT
+		tempElement1 = createElement(tempElement1, "span", vn.consts.CLASS_NAMES.colorTextGExplain.id, vn.consts.CLASS_NAMES.colorTextGExplain.className, i, {"isIcon":false, "text":"G"});	//COMMENT
 		colorTextSelectBox.appendChild(tempElement1);
-		colorTextGInput = createElementInput(colorTextGInput, Vanillanote.consts.CLASS_NAMES.colorTextGInput.id, Vanillanote.consts.CLASS_NAMES.colorTextGInput.className, i);
+		colorTextGInput = createElementInput(colorTextGInput, vn.consts.CLASS_NAMES.colorTextGInput.id, vn.consts.CLASS_NAMES.colorTextGInput.className, i);
 		colorTextGInput.setAttribute("maxlength", "2");
-		addClickEvent(colorTextGInput, Vanillanote.consts.CLASS_NAMES.colorTextGInput.id);
+		addClickEvent(colorTextGInput, vn.consts.CLASS_NAMES.colorTextGInput.id);
 		colorTextSelectBox.appendChild(colorTextGInput);
-		tempElement1 = createElement(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.colorTextBExplain.id, Vanillanote.consts.CLASS_NAMES.colorTextBExplain.className, i, {"isIcon":false, "text":"B"});	//COMMENT
+		tempElement1 = createElement(tempElement1, "span", vn.consts.CLASS_NAMES.colorTextBExplain.id, vn.consts.CLASS_NAMES.colorTextBExplain.className, i, {"isIcon":false, "text":"B"});	//COMMENT
 		colorTextSelectBox.appendChild(tempElement1);
-		colorTextBInput = createElementInput(colorTextBInput, Vanillanote.consts.CLASS_NAMES.colorTextBInput.id, Vanillanote.consts.CLASS_NAMES.colorTextBInput.className, i);
+		colorTextBInput = createElementInput(colorTextBInput, vn.consts.CLASS_NAMES.colorTextBInput.id, vn.consts.CLASS_NAMES.colorTextBInput.className, i);
 		colorTextBInput.setAttribute("maxlength", "2");
-		addClickEvent(colorTextBInput, Vanillanote.consts.CLASS_NAMES.colorTextBInput.id);
+		addClickEvent(colorTextBInput, vn.consts.CLASS_NAMES.colorTextBInput.id);
 		colorTextSelectBox.appendChild(colorTextBInput);
-		tempElement1 = createElement(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.colorTextOpacityExplain.id, Vanillanote.consts.CLASS_NAMES.colorTextOpacityExplain.className, i, {"isIcon":false, "text":"Opacity"});	//COMMENT
+		tempElement1 = createElement(tempElement1, "span", vn.consts.CLASS_NAMES.colorTextOpacityExplain.id, vn.consts.CLASS_NAMES.colorTextOpacityExplain.className, i, {"isIcon":false, "text":"Opacity"});	//COMMENT
 		colorTextSelectBox.appendChild(tempElement1);
-		colorTextOpacityInput = createElementInput(colorTextOpacityInput, Vanillanote.consts.CLASS_NAMES.colorTextOpacityInput.id, Vanillanote.consts.CLASS_NAMES.colorTextOpacityInput.className, i);
+		colorTextOpacityInput = createElementInput(colorTextOpacityInput, vn.consts.CLASS_NAMES.colorTextOpacityInput.id, vn.consts.CLASS_NAMES.colorTextOpacityInput.className, i);
 		colorTextOpacityInput.setAttribute("type","number");
 		colorTextOpacityInput.setAttribute("maxlength", "3");
-		addClickEvent(colorTextOpacityInput, Vanillanote.consts.CLASS_NAMES.colorTextOpacityInput.id);
+		addClickEvent(colorTextOpacityInput, vn.consts.CLASS_NAMES.colorTextOpacityInput.id);
 		colorTextSelectBox.appendChild(colorTextOpacityInput);
 		tempElement1 = document.createElement("br");
 		colorTextSelectBox.appendChild(tempElement1);
-		colorText0 = createElementBasic(colorText0, "div", Vanillanote.consts.CLASS_NAMES.colorText0.id, Vanillanote.consts.CLASS_NAMES.colorText0.className, i);
-		colorText0.style.backgroundColor = Vanillanote.colors.color12[i];
+		colorText0 = createElementBasic(colorText0, "div", vn.consts.CLASS_NAMES.colorText0.id, vn.consts.CLASS_NAMES.colorText0.className, i);
+		colorText0.style.backgroundColor = vn.colors.color12[i];
 		colorTextSelectBox.appendChild(colorText0);
-		colorText1 = createElementBasic(colorText1, "div", Vanillanote.consts.CLASS_NAMES.colorText1.id, Vanillanote.consts.CLASS_NAMES.colorText1.className, i);
-		colorText1.style.backgroundColor = Vanillanote.colors.color14[i];
+		colorText1 = createElementBasic(colorText1, "div", vn.consts.CLASS_NAMES.colorText1.id, vn.consts.CLASS_NAMES.colorText1.className, i);
+		colorText1.style.backgroundColor = vn.colors.color14[i];
 		colorTextSelectBox.appendChild(colorText1);
-		colorText2 = createElementBasic(colorText2, "div", Vanillanote.consts.CLASS_NAMES.colorText2.id, Vanillanote.consts.CLASS_NAMES.colorText2.className, i);
-		colorText2.style.backgroundColor = Vanillanote.colors.color15[i];
+		colorText2 = createElementBasic(colorText2, "div", vn.consts.CLASS_NAMES.colorText2.id, vn.consts.CLASS_NAMES.colorText2.className, i);
+		colorText2.style.backgroundColor = vn.colors.color15[i];
 		colorTextSelectBox.appendChild(colorText2);
-		colorText3 = createElementBasic(colorText3, "div", Vanillanote.consts.CLASS_NAMES.colorText3.id, Vanillanote.consts.CLASS_NAMES.colorText3.className, i);
-		colorText3.style.backgroundColor = Vanillanote.colors.color16[i];
+		colorText3 = createElementBasic(colorText3, "div", vn.consts.CLASS_NAMES.colorText3.id, vn.consts.CLASS_NAMES.colorText3.className, i);
+		colorText3.style.backgroundColor = vn.colors.color16[i];
 		colorTextSelectBox.appendChild(colorText3);
-		colorText4 = createElementBasic(colorText4, "div", Vanillanote.consts.CLASS_NAMES.colorText4.id, Vanillanote.consts.CLASS_NAMES.colorText4.className, i);
-		colorText4.style.backgroundColor = Vanillanote.colors.color17[i];
+		colorText4 = createElementBasic(colorText4, "div", vn.consts.CLASS_NAMES.colorText4.id, vn.consts.CLASS_NAMES.colorText4.className, i);
+		colorText4.style.backgroundColor = vn.colors.color17[i];
 		colorTextSelectBox.appendChild(colorText4);
-		colorText5 = createElementBasic(colorText5, "div", Vanillanote.consts.CLASS_NAMES.colorText5.id, Vanillanote.consts.CLASS_NAMES.colorText5.className, i);
-		colorText5.style.backgroundColor = Vanillanote.colors.color18[i];
+		colorText5 = createElementBasic(colorText5, "div", vn.consts.CLASS_NAMES.colorText5.id, vn.consts.CLASS_NAMES.colorText5.className, i);
+		colorText5.style.backgroundColor = vn.colors.color18[i];
 		colorTextSelectBox.appendChild(colorText5);
-		colorText6 = createElementBasic(colorText6, "div", Vanillanote.consts.CLASS_NAMES.colorText6.id, Vanillanote.consts.CLASS_NAMES.colorText6.className, i);
-		colorText6.style.backgroundColor = Vanillanote.colors.color19[i];
+		colorText6 = createElementBasic(colorText6, "div", vn.consts.CLASS_NAMES.colorText6.id, vn.consts.CLASS_NAMES.colorText6.className, i);
+		colorText6.style.backgroundColor = vn.colors.color19[i];
 		colorTextSelectBox.appendChild(colorText6);
-		colorText7 = createElementBasic(colorText7, "div", Vanillanote.consts.CLASS_NAMES.colorText7.id, Vanillanote.consts.CLASS_NAMES.colorText7.className, i);
-		colorText7.style.backgroundColor = Vanillanote.colors.color20[i];
+		colorText7 = createElementBasic(colorText7, "div", vn.consts.CLASS_NAMES.colorText7.id, vn.consts.CLASS_NAMES.colorText7.className, i);
+		colorText7.style.backgroundColor = vn.colors.color20[i];
 		colorTextSelectBox.appendChild(colorText7);
 		//==================================================================================
 		//color background select
-		colorBackSelect = createElementSelect(colorBackSelect, "span", Vanillanote.consts.CLASS_NAMES.colorBackSelect.id, Vanillanote.consts.CLASS_NAMES.colorBackSelect.className, i, {"isIcon":true, "text":"format_color_fill", "iconStyle" : "font-size: 1.1em; -webkit-text-stroke: 0.5px " + Vanillanote.colors.color1[i]+";"});
-		colorBackSelect.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].colorBackTooltip);	//COMMENT
-		colorBackSelectBox = createElementSelectBox(colorBackSelectBox, "div", Vanillanote.consts.CLASS_NAMES.colorBackSelectBox.id, Vanillanote.consts.CLASS_NAMES.colorBackSelectBox.className, i);
+		colorBackSelect = createElementSelect(colorBackSelect, "span", vn.consts.CLASS_NAMES.colorBackSelect.id, vn.consts.CLASS_NAMES.colorBackSelect.className, i, {"isIcon":true, "text":"format_color_fill", "iconStyle" : "font-size: 1.1em; -webkit-text-stroke: 0.5px " + vn.colors.color1[i]+";"});
+		colorBackSelect.setAttribute("title",vn.languageSet[vn.variables.languages[i]].colorBackTooltip);	//COMMENT
+		colorBackSelectBox = createElementSelectBox(colorBackSelectBox, "div", vn.consts.CLASS_NAMES.colorBackSelectBox.id, vn.consts.CLASS_NAMES.colorBackSelectBox.className, i);
 		colorBackSelect.appendChild(colorBackSelectBox);
-		tempElement1 = createElement(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.colorBackRExplain.id, Vanillanote.consts.CLASS_NAMES.colorBackRExplain.className, i, {"isIcon":false, "text":"R"});	//COMMENT
-		tempElement1.style.paddingLeft = (Vanillanote.variables.sizeRates[i] * 8) + "px";
+		tempElement1 = createElement(tempElement1, "span", vn.consts.CLASS_NAMES.colorBackRExplain.id, vn.consts.CLASS_NAMES.colorBackRExplain.className, i, {"isIcon":false, "text":"R"});	//COMMENT
+		tempElement1.style.paddingLeft = (vn.variables.sizeRates[i] * 8) + "px";
 		colorBackSelectBox.appendChild(tempElement1);
-		colorBackRInput = createElementInput(colorBackRInput, Vanillanote.consts.CLASS_NAMES.colorBackRInput.id, Vanillanote.consts.CLASS_NAMES.colorBackRInput.className, i);
+		colorBackRInput = createElementInput(colorBackRInput, vn.consts.CLASS_NAMES.colorBackRInput.id, vn.consts.CLASS_NAMES.colorBackRInput.className, i);
 		colorBackRInput.setAttribute("maxlength", "2");
-		addClickEvent(colorBackRInput, Vanillanote.consts.CLASS_NAMES.colorBackRInput.id);
+		addClickEvent(colorBackRInput, vn.consts.CLASS_NAMES.colorBackRInput.id);
 		colorBackSelectBox.appendChild(colorBackRInput);
-		tempElement1 = createElement(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.colorBackGExplain.id, Vanillanote.consts.CLASS_NAMES.colorBackGExplain.className, i, {"isIcon":false, "text":"G"});	//COMMENT
+		tempElement1 = createElement(tempElement1, "span", vn.consts.CLASS_NAMES.colorBackGExplain.id, vn.consts.CLASS_NAMES.colorBackGExplain.className, i, {"isIcon":false, "text":"G"});	//COMMENT
 		colorBackSelectBox.appendChild(tempElement1);
-		colorBackGInput = createElementInput(colorBackGInput, Vanillanote.consts.CLASS_NAMES.colorBackGInput.id, Vanillanote.consts.CLASS_NAMES.colorBackGInput.className, i);
+		colorBackGInput = createElementInput(colorBackGInput, vn.consts.CLASS_NAMES.colorBackGInput.id, vn.consts.CLASS_NAMES.colorBackGInput.className, i);
 		colorBackGInput.setAttribute("maxlength", "2");
-		addClickEvent(colorBackGInput, Vanillanote.consts.CLASS_NAMES.colorBackGInput.id);
+		addClickEvent(colorBackGInput, vn.consts.CLASS_NAMES.colorBackGInput.id);
 		colorBackSelectBox.appendChild(colorBackGInput);
-		tempElement1 = createElement(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.colorBackBExplain.id, Vanillanote.consts.CLASS_NAMES.colorBackBExplain.className, i, {"isIcon":false, "text":"B"});	//COMMENT
+		tempElement1 = createElement(tempElement1, "span", vn.consts.CLASS_NAMES.colorBackBExplain.id, vn.consts.CLASS_NAMES.colorBackBExplain.className, i, {"isIcon":false, "text":"B"});	//COMMENT
 		colorBackSelectBox.appendChild(tempElement1);
-		colorBackBInput = createElementInput(colorBackBInput, Vanillanote.consts.CLASS_NAMES.colorBackBInput.id, Vanillanote.consts.CLASS_NAMES.colorBackBInput.className, i);
+		colorBackBInput = createElementInput(colorBackBInput, vn.consts.CLASS_NAMES.colorBackBInput.id, vn.consts.CLASS_NAMES.colorBackBInput.className, i);
 		colorBackBInput.setAttribute("maxlength", "2");
-		addClickEvent(colorBackBInput, Vanillanote.consts.CLASS_NAMES.colorBackBInput.id);
+		addClickEvent(colorBackBInput, vn.consts.CLASS_NAMES.colorBackBInput.id);
 		colorBackSelectBox.appendChild(colorBackBInput);
-		tempElement1 = createElement(tempElement1, "span", Vanillanote.consts.CLASS_NAMES.colorBackOpacityExplain.id, Vanillanote.consts.CLASS_NAMES.colorBackOpacityExplain.className, i, {"isIcon":false, "text":"Opacity"});	//COMMENT
+		tempElement1 = createElement(tempElement1, "span", vn.consts.CLASS_NAMES.colorBackOpacityExplain.id, vn.consts.CLASS_NAMES.colorBackOpacityExplain.className, i, {"isIcon":false, "text":"Opacity"});	//COMMENT
 		colorBackSelectBox.appendChild(tempElement1);
-		colorBackOpacityInput = createElementInput(colorBackOpacityInput, Vanillanote.consts.CLASS_NAMES.colorBackOpacityInput.id, Vanillanote.consts.CLASS_NAMES.colorBackOpacityInput.className, i);
+		colorBackOpacityInput = createElementInput(colorBackOpacityInput, vn.consts.CLASS_NAMES.colorBackOpacityInput.id, vn.consts.CLASS_NAMES.colorBackOpacityInput.className, i);
 		colorBackOpacityInput.setAttribute("type","number");
 		colorBackOpacityInput.setAttribute("maxlength", "3");
-		addClickEvent(colorBackOpacityInput, Vanillanote.consts.CLASS_NAMES.colorBackOpacityInput.id);
+		addClickEvent(colorBackOpacityInput, vn.consts.CLASS_NAMES.colorBackOpacityInput.id);
 		colorBackSelectBox.appendChild(colorBackOpacityInput);
 		tempElement1 = document.createElement("br");
 		colorBackSelectBox.appendChild(tempElement1);
-		colorBack0 = createElementBasic(colorBack0, "div", Vanillanote.consts.CLASS_NAMES.colorBack0.id, Vanillanote.consts.CLASS_NAMES.colorBack0.className, i);
-		colorBack0.style.backgroundColor = Vanillanote.colors.color13[i];
+		colorBack0 = createElementBasic(colorBack0, "div", vn.consts.CLASS_NAMES.colorBack0.id, vn.consts.CLASS_NAMES.colorBack0.className, i);
+		colorBack0.style.backgroundColor = vn.colors.color13[i];
 		colorBackSelectBox.appendChild(colorBack0);
-		colorBack1 = createElementBasic(colorBack1, "div", Vanillanote.consts.CLASS_NAMES.colorBack1.id, Vanillanote.consts.CLASS_NAMES.colorBack1.className, i);
-		colorBack1.style.backgroundColor = Vanillanote.colors.color14[i];
+		colorBack1 = createElementBasic(colorBack1, "div", vn.consts.CLASS_NAMES.colorBack1.id, vn.consts.CLASS_NAMES.colorBack1.className, i);
+		colorBack1.style.backgroundColor = vn.colors.color14[i];
 		colorBackSelectBox.appendChild(colorBack1);
-		colorBack2 = createElementBasic(colorBack2, "div", Vanillanote.consts.CLASS_NAMES.colorBack2.id, Vanillanote.consts.CLASS_NAMES.colorBack2.className, i);
-		colorBack2.style.backgroundColor = Vanillanote.colors.color15[i];
+		colorBack2 = createElementBasic(colorBack2, "div", vn.consts.CLASS_NAMES.colorBack2.id, vn.consts.CLASS_NAMES.colorBack2.className, i);
+		colorBack2.style.backgroundColor = vn.colors.color15[i];
 		colorBackSelectBox.appendChild(colorBack2);
-		colorBack3 = createElementBasic(colorBack3, "div", Vanillanote.consts.CLASS_NAMES.colorBack3.id, Vanillanote.consts.CLASS_NAMES.colorBack3.className, i);
-		colorBack3.style.backgroundColor = Vanillanote.colors.color16[i];
+		colorBack3 = createElementBasic(colorBack3, "div", vn.consts.CLASS_NAMES.colorBack3.id, vn.consts.CLASS_NAMES.colorBack3.className, i);
+		colorBack3.style.backgroundColor = vn.colors.color16[i];
 		colorBackSelectBox.appendChild(colorBack3);
-		colorBack4 = createElementBasic(colorBack4, "div", Vanillanote.consts.CLASS_NAMES.colorBack4.id, Vanillanote.consts.CLASS_NAMES.colorBack4.className, i);
-		colorBack4.style.backgroundColor = Vanillanote.colors.color17[i];
+		colorBack4 = createElementBasic(colorBack4, "div", vn.consts.CLASS_NAMES.colorBack4.id, vn.consts.CLASS_NAMES.colorBack4.className, i);
+		colorBack4.style.backgroundColor = vn.colors.color17[i];
 		colorBackSelectBox.appendChild(colorBack4);
-		colorBack5 = createElementBasic(colorBack5, "div", Vanillanote.consts.CLASS_NAMES.colorBack5.id, Vanillanote.consts.CLASS_NAMES.colorBack5.className, i);
-		colorBack5.style.backgroundColor = Vanillanote.colors.color18[i];
+		colorBack5 = createElementBasic(colorBack5, "div", vn.consts.CLASS_NAMES.colorBack5.id, vn.consts.CLASS_NAMES.colorBack5.className, i);
+		colorBack5.style.backgroundColor = vn.colors.color18[i];
 		colorBackSelectBox.appendChild(colorBack5);
-		colorBack6 = createElementBasic(colorBack6, "div", Vanillanote.consts.CLASS_NAMES.colorBack6.id, Vanillanote.consts.CLASS_NAMES.colorBack6.className, i);
-		colorBack6.style.backgroundColor = Vanillanote.colors.color19[i];
+		colorBack6 = createElementBasic(colorBack6, "div", vn.consts.CLASS_NAMES.colorBack6.id, vn.consts.CLASS_NAMES.colorBack6.className, i);
+		colorBack6.style.backgroundColor = vn.colors.color19[i];
 		colorBackSelectBox.appendChild(colorBack6);
-		colorBack7 = createElementBasic(colorBack7, "div", Vanillanote.consts.CLASS_NAMES.colorBack7.id, Vanillanote.consts.CLASS_NAMES.colorBack7.className, i);
-		colorBack7.style.backgroundColor = Vanillanote.colors.color20[i];
+		colorBack7 = createElementBasic(colorBack7, "div", vn.consts.CLASS_NAMES.colorBack7.id, vn.consts.CLASS_NAMES.colorBack7.className, i);
+		colorBack7.style.backgroundColor = vn.colors.color20[i];
 		colorBackSelectBox.appendChild(colorBack7);
 		//==================================================================================
 		//formatClearButton
 		//==================================================================================
-		formatClearButton = createElementButton(formatClearButton, "span", Vanillanote.consts.CLASS_NAMES.formatClearButton.id, Vanillanote.consts.CLASS_NAMES.formatClearButton.className, i, {"isIcon":true, "text":"format_clear"});
-		formatClearButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].formatClearButtonTooltip);	//COMMENT
+		formatClearButton = createElementButton(formatClearButton, "span", vn.consts.CLASS_NAMES.formatClearButton.id, vn.consts.CLASS_NAMES.formatClearButton.className, i, {"isIcon":true, "text":"format_clear"});
+		formatClearButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].formatClearButtonTooltip);	//COMMENT
 		//==================================================================================
 		//undo
 		//==================================================================================
-		undoButton = createElementButton(undoButton, "span", Vanillanote.consts.CLASS_NAMES.undoButton.id, Vanillanote.consts.CLASS_NAMES.undoButton.className, i, {"isIcon":true, "text":"undo"});
-		undoButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].undoTooltip);	//COMMENT
+		undoButton = createElementButton(undoButton, "span", vn.consts.CLASS_NAMES.undoButton.id, vn.consts.CLASS_NAMES.undoButton.className, i, {"isIcon":true, "text":"undo"});
+		undoButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].undoTooltip);	//COMMENT
 		//==================================================================================
 		//redo
 		//==================================================================================
-		redoButton = createElementButton(redoButton, "span", Vanillanote.consts.CLASS_NAMES.redoButton.id, Vanillanote.consts.CLASS_NAMES.redoButton.className, i, {"isIcon":true, "text":"redo"});
-		redoButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].redoTooltip);	//COMMENT
+		redoButton = createElementButton(redoButton, "span", vn.consts.CLASS_NAMES.redoButton.id, vn.consts.CLASS_NAMES.redoButton.className, i, {"isIcon":true, "text":"redo"});
+		redoButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].redoTooltip);	//COMMENT
 		//==================================================================================
 		//help
 		//==================================================================================
-		helpButton = createElementButton(helpButton, "span", Vanillanote.consts.CLASS_NAMES.helpButton.id, Vanillanote.consts.CLASS_NAMES.helpButton.className, i, {"isIcon":true, "text":"help"});
-		helpButton.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].helpTooltip);	//COMMENT
+		helpButton = createElementButton(helpButton, "span", vn.consts.CLASS_NAMES.helpButton.id, vn.consts.CLASS_NAMES.helpButton.className, i, {"isIcon":true, "text":"help"});
+		helpButton.setAttribute("title",vn.languageSet[vn.variables.languages[i]].helpTooltip);	//COMMENT
 		//==================================================================================
 		//modal
 		//==================================================================================
-		modalBack = createElementBasic(modalBack, "div", Vanillanote.consts.CLASS_NAMES.modalBack.id, Vanillanote.consts.CLASS_NAMES.modalBack.className, i);
+		modalBack = createElementBasic(modalBack, "div", vn.consts.CLASS_NAMES.modalBack.id, vn.consts.CLASS_NAMES.modalBack.className, i);
 		//==================================================================================
 		//modal att link
-		attLinkModal = createElementBasic(attLinkModal, "div", Vanillanote.consts.CLASS_NAMES.attLinkModal.id, Vanillanote.consts.CLASS_NAMES.attLinkModal.className, i);
+		attLinkModal = createElementBasic(attLinkModal, "div", vn.consts.CLASS_NAMES.attLinkModal.id, vn.consts.CLASS_NAMES.attLinkModal.className, i);
 		
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attLinkHeader.id, Vanillanote.consts.CLASS_NAMES.attLinkHeader.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attLinkModalTitle});	//COMMENT
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attLinkHeader.id, vn.consts.CLASS_NAMES.attLinkHeader.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attLinkModalTitle});	//COMMENT
 		attLinkModal.appendChild(tempElement1);
 		
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attLinkExplain1.id, Vanillanote.consts.CLASS_NAMES.attLinkExplain1.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attLinkInTextExplain});	//COMMENT
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attLinkExplain1.id, vn.consts.CLASS_NAMES.attLinkExplain1.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attLinkInTextExplain});	//COMMENT
 		attLinkModal.appendChild(tempElement1);
 		
-		attLinkText = createElementInput(attLinkText, Vanillanote.consts.CLASS_NAMES.attLinkText.id, Vanillanote.consts.CLASS_NAMES.attLinkText.className, i);
-		attLinkText.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attLinkInTextTooltip);	//COMMENT
+		attLinkText = createElementInput(attLinkText, vn.consts.CLASS_NAMES.attLinkText.id, vn.consts.CLASS_NAMES.attLinkText.className, i);
+		attLinkText.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attLinkInTextTooltip);	//COMMENT
 		attLinkModal.appendChild(attLinkText);
 		
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attLinkExplain2.id, Vanillanote.consts.CLASS_NAMES.attLinkExplain2.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attLinkInLinkExplain});	//COMMENT
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attLinkExplain2.id, vn.consts.CLASS_NAMES.attLinkExplain2.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attLinkInLinkExplain});	//COMMENT
 		attLinkModal.appendChild(tempElement1);
 		
-		attLinkHref = createElementInput(attLinkHref, Vanillanote.consts.CLASS_NAMES.attLinkHref.id, Vanillanote.consts.CLASS_NAMES.attLinkHref.className, i);
-		attLinkHref.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attLinkInLinkTooltip);	//COMMENT
+		attLinkHref = createElementInput(attLinkHref, vn.consts.CLASS_NAMES.attLinkHref.id, vn.consts.CLASS_NAMES.attLinkHref.className, i);
+		attLinkHref.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attLinkInLinkTooltip);	//COMMENT
 		attLinkModal.appendChild(attLinkHref);
 		
-		attLinkIsBlankCheckbox = createElementInputCheckbox(attLinkIsBlankCheckbox, Vanillanote.consts.CLASS_NAMES.attLinkIsBlankCheckbox.id, Vanillanote.consts.CLASS_NAMES.attLinkIsBlankCheckbox.className, i);
-		attLinkIsBlankCheckbox.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attLinkIsOpenTooltip);	//COMMENT
-		tempElement1 = createElement(tempElement1, "label", Vanillanote.consts.CLASS_NAMES.attLinkIsBlankLabel.id, Vanillanote.consts.CLASS_NAMES.attLinkIsBlankLabel.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attLinkIsOpenExplain});
+		attLinkIsBlankCheckbox = createElementInputCheckbox(attLinkIsBlankCheckbox, vn.consts.CLASS_NAMES.attLinkIsBlankCheckbox.id, vn.consts.CLASS_NAMES.attLinkIsBlankCheckbox.className, i);
+		attLinkIsBlankCheckbox.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attLinkIsOpenTooltip);	//COMMENT
+		tempElement1 = createElement(tempElement1, "label", vn.consts.CLASS_NAMES.attLinkIsBlankLabel.id, vn.consts.CLASS_NAMES.attLinkIsBlankLabel.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attLinkIsOpenExplain});
 		tempElement1.insertBefore(attLinkIsBlankCheckbox, tempElement1.firstChild);
 		attLinkModal.appendChild(tempElement1);
 		
-		attLinkValidCheckText = createElement(attLinkValidCheckText, "span", Vanillanote.consts.CLASS_NAMES.attLinkValidCheckText.id, Vanillanote.consts.CLASS_NAMES.attLinkValidCheckText.className, i);
-		attLinkValidCheckbox = createElementInputCheckbox(attLinkIsBlankCheckbox, Vanillanote.consts.CLASS_NAMES.attLinkValidCheckbox.id, Vanillanote.consts.CLASS_NAMES.attLinkValidCheckbox.className, i);
+		attLinkValidCheckText = createElement(attLinkValidCheckText, "span", vn.consts.CLASS_NAMES.attLinkValidCheckText.id, vn.consts.CLASS_NAMES.attLinkValidCheckText.className, i);
+		attLinkValidCheckbox = createElementInputCheckbox(attLinkIsBlankCheckbox, vn.consts.CLASS_NAMES.attLinkValidCheckbox.id, vn.consts.CLASS_NAMES.attLinkValidCheckbox.className, i);
 		attLinkValidCheckbox.style.display = "none";
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attLinkFooter.id, Vanillanote.consts.CLASS_NAMES.attLinkFooter.className, i);
-		attLinkInsertButton = createElementButton(attLinkInsertButton, "button", Vanillanote.consts.CLASS_NAMES.attLinkInsertButton.id, Vanillanote.consts.CLASS_NAMES.attLinkInsertButton.className, i, {"isIcon":true, "text":"add_link"});
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attLinkFooter.id, vn.consts.CLASS_NAMES.attLinkFooter.className, i);
+		attLinkInsertButton = createElementButton(attLinkInsertButton, "button", vn.consts.CLASS_NAMES.attLinkInsertButton.id, vn.consts.CLASS_NAMES.attLinkInsertButton.className, i, {"isIcon":true, "text":"add_link"});
 		tempElement1.appendChild(attLinkValidCheckText);
 		tempElement1.appendChild(attLinkValidCheckbox);
 		tempElement1.appendChild(attLinkInsertButton);
@@ -8501,41 +8502,41 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		attLinkModal.appendChild(tempElement1);
 		//==================================================================================
 		//modal att file
-		attFileModal = createElementBasic(attFileModal, "div", Vanillanote.consts.CLASS_NAMES.attFileModal.id, Vanillanote.consts.CLASS_NAMES.attFileModal.className, i);
-	    tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attFileHeader.id, Vanillanote.consts.CLASS_NAMES.attFileHeader.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attFileModalTitle});	//COMMENT
+		attFileModal = createElementBasic(attFileModal, "div", vn.consts.CLASS_NAMES.attFileModal.id, vn.consts.CLASS_NAMES.attFileModal.className, i);
+	    tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attFileHeader.id, vn.consts.CLASS_NAMES.attFileHeader.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attFileModalTitle});	//COMMENT
 	    attFileModal.appendChild(tempElement1);
 	    
 		//layout : upload file
-	    attFilelayout = createElement(attFilelayout, "div", Vanillanote.consts.CLASS_NAMES.attFilelayout.id, Vanillanote.consts.CLASS_NAMES.attFilelayout.className, i);
+	    attFilelayout = createElement(attFilelayout, "div", vn.consts.CLASS_NAMES.attFilelayout.id, vn.consts.CLASS_NAMES.attFilelayout.className, i);
 	    
-	    tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attFileExplain1.id, Vanillanote.consts.CLASS_NAMES.attFileExplain1.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attFileExplain1});	//COMMENT
+	    tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attFileExplain1.id, vn.consts.CLASS_NAMES.attFileExplain1.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attFileExplain1});	//COMMENT
 	    attFilelayout.appendChild(tempElement1);
 	    tempElement1 = document.createElement("br");
 	    attFilelayout.appendChild(tempElement1);
 	    
 	    tempElement1 = document.createElement("div");
 	    tempElement1.setAttribute("style","width:90%;text-align:center;margin:0 auto;");
-	    attFileUploadDiv = createElementButton(attFileUploadDiv, "div", Vanillanote.consts.CLASS_NAMES.attFileUploadDiv.id, Vanillanote.consts.CLASS_NAMES.attFileUploadDiv.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attFileUploadDiv});
+	    attFileUploadDiv = createElementButton(attFileUploadDiv, "div", vn.consts.CLASS_NAMES.attFileUploadDiv.id, vn.consts.CLASS_NAMES.attFileUploadDiv.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attFileUploadDiv});
 	    attFileUploadDiv.addEventListener("dragover", function(event: any) {
- 			consoleLog("Vanillanote.elementEvents." + "attFileUploadDiv_onBeforeDragover", "params :" , "(event)", event, "(target)", event.target);
- 			if(!Vanillanote.elementEvents.attFileUploadDiv_onBeforeDragover(event)) return;
+ 			consoleLog("vn.elementEvents." + "attFileUploadDiv_onBeforeDragover", "params :" , "(event)", event, "(target)", event.target);
+ 			if(!vn.elementEvents.attFileUploadDiv_onBeforeDragover(event)) return;
  			
  			consoleLog("attFileUploadDiv_onDragover", "params :" , "(event)", event, "(target)", event.target);
  			elementsEvent["attFileUploadDiv_onDragover"](event);
  			
- 			consoleLog("Vanillanote.elementEvents." + "attFileUploadDiv_onAfterDragover", "params :" , "(event)", event, "(target)", event.target);
- 			Vanillanote.elementEvents.attFileUploadDiv_onAfterDragover(event);
+ 			consoleLog("vn.elementEvents." + "attFileUploadDiv_onAfterDragover", "params :" , "(event)", event, "(target)", event.target);
+ 			vn.elementEvents.attFileUploadDiv_onAfterDragover(event);
  			event.stopImmediatePropagation();
  		});
 	    attFileUploadDiv.addEventListener("drop", function(event: any) {
- 			consoleLog("Vanillanote.elementEvents." + "attFileUploadDiv_onBeforeDrop", "params :" , "(event)", event, "(target)", event.target);
- 			if(!Vanillanote.elementEvents.attFileUploadDiv_onBeforeDrop(event)) return;
+ 			consoleLog("vn.elementEvents." + "attFileUploadDiv_onBeforeDrop", "params :" , "(event)", event, "(target)", event.target);
+ 			if(!vn.elementEvents.attFileUploadDiv_onBeforeDrop(event)) return;
  			
  			consoleLog("attFileUploadDiv_onDrop", "params :" , "(event)", event, "(target)", event.target);
  			elementsEvent["attFileUploadDiv_onDrop"](event);
  			
- 			consoleLog("Vanillanote.elementEvents." + "attFileUploadDiv_onAfterDrop", "params :" , "(event)", event, "(target)", event.target);
- 			Vanillanote.elementEvents.attFileUploadDiv_onAfterDrop(event);
+ 			consoleLog("vn.elementEvents." + "attFileUploadDiv_onAfterDrop", "params :" , "(event)", event, "(target)", event.target);
+ 			vn.elementEvents.attFileUploadDiv_onAfterDrop(event);
  			event.stopImmediatePropagation();
  		});
 		tempElement1.appendChild(attFileUploadDiv);
@@ -8543,111 +8544,111 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		
 	    tempElement1 = document.createElement("div");
 	    tempElement1.setAttribute("style","width:90%;text-align:right;margin:5px auto 20px auto;");
-	    attFileUploadButton = createElementButton(attFileUploadButton, "button", Vanillanote.consts.CLASS_NAMES.attFileUploadButton.id, Vanillanote.consts.CLASS_NAMES.attFileUploadButton.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attFileUploadButton});
+	    attFileUploadButton = createElementButton(attFileUploadButton, "button", vn.consts.CLASS_NAMES.attFileUploadButton.id, vn.consts.CLASS_NAMES.attFileUploadButton.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attFileUploadButton});
 	    tempElement1.appendChild(attFileUploadButton);
 	    attFilelayout.appendChild(tempElement1);
 
-	    attFileUpload = createElementInput(attFileUpload, Vanillanote.consts.CLASS_NAMES.attFileUpload.id, Vanillanote.consts.CLASS_NAMES.attFileUpload.className, i);
+	    attFileUpload = createElementInput(attFileUpload, vn.consts.CLASS_NAMES.attFileUpload.id, vn.consts.CLASS_NAMES.attFileUpload.className, i);
 	    attFileUpload.setAttribute("type","file");
 	    attFileUpload.setAttribute("multiple","");
 	    attFilelayout.appendChild(tempElement1);
 	    attFilelayout.appendChild(attFileUpload);
 	    attFileModal.appendChild(attFilelayout);
 	    
-	    tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attFileFooter.id, Vanillanote.consts.CLASS_NAMES.attFileFooter.className, i);
-	    attFileInsertButton = createElementButton(attFileInsertButton, "button", Vanillanote.consts.CLASS_NAMES.attFileInsertButton.id, Vanillanote.consts.CLASS_NAMES.attFileInsertButton.className, i, {"isIcon":true, "text":"attach_file"});
+	    tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attFileFooter.id, vn.consts.CLASS_NAMES.attFileFooter.className, i);
+	    attFileInsertButton = createElementButton(attFileInsertButton, "button", vn.consts.CLASS_NAMES.attFileInsertButton.id, vn.consts.CLASS_NAMES.attFileInsertButton.className, i, {"isIcon":true, "text":"attach_file"});
 	    tempElement1.appendChild(attFileInsertButton);
 	    attFileModal.appendChild(tempElement1);
 		//==================================================================================
 		//modal att image
-		attImageModal = createElementBasic(attImageModal, "div", Vanillanote.consts.CLASS_NAMES.attImageModal.id, Vanillanote.consts.CLASS_NAMES.attImageModal.className, i);
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attImageHeader.id, Vanillanote.consts.CLASS_NAMES.attImageHeader.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attImageModalTitle});	//COMMENT
+		attImageModal = createElementBasic(attImageModal, "div", vn.consts.CLASS_NAMES.attImageModal.id, vn.consts.CLASS_NAMES.attImageModal.className, i);
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attImageHeader.id, vn.consts.CLASS_NAMES.attImageHeader.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attImageModalTitle});	//COMMENT
 		attImageModal.appendChild(tempElement1);
 		
-	    tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attImageExplain1.id, Vanillanote.consts.CLASS_NAMES.attImageExplain1.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attImageExplain1});	//COMMENT
+	    tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attImageExplain1.id, vn.consts.CLASS_NAMES.attImageExplain1.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attImageExplain1});	//COMMENT
 	    attImageModal.appendChild(tempElement1);
 	    tempElement1 = document.createElement("br");
 	    attImageModal.appendChild(tempElement1);
 	    
 	    tempElement1 = document.createElement("div");
 	    tempElement1.setAttribute("style","width:90%;text-align:center;margin:0 auto;position:relative;");
-	    attImageViewPreButtion = createElementButton(attImageInsertButton, "button", Vanillanote.consts.CLASS_NAMES.attImageViewPreButtion.id, Vanillanote.consts.CLASS_NAMES.attImageViewPreButtion.className, i, {"isIcon":true, "text":"navigate_before"});
+	    attImageViewPreButtion = createElementButton(attImageInsertButton, "button", vn.consts.CLASS_NAMES.attImageViewPreButtion.id, vn.consts.CLASS_NAMES.attImageViewPreButtion.className, i, {"isIcon":true, "text":"navigate_before"});
 	    attImageViewPreButtion.setAttribute("style","position:absolute;top:50%;transform:translateY(-50%) translateX(1%);");
 	    tempElement1.appendChild(attImageViewPreButtion);
 	    
-	    attImageUploadButtonAndView = createElementBasic(attImageUploadButtonAndView, "div", Vanillanote.consts.CLASS_NAMES.attImageUploadButtonAndView.id, Vanillanote.consts.CLASS_NAMES.attImageUploadButtonAndView.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attImageUploadButtonAndView});
+	    attImageUploadButtonAndView = createElementBasic(attImageUploadButtonAndView, "div", vn.consts.CLASS_NAMES.attImageUploadButtonAndView.id, vn.consts.CLASS_NAMES.attImageUploadButtonAndView.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attImageUploadButtonAndView});
 	    attImageUploadButtonAndView.addEventListener("dragover", function(event: any) {
- 			consoleLog("Vanillanote.elementEvents." + "attImageUploadButtonAndView_onBeforeDragover", "params :" , "(event)", event, "(target)", event.target);
- 			if(!Vanillanote.elementEvents.attImageUploadButtonAndView_onBeforeDragover(event)) return;
+ 			consoleLog("vn.elementEvents." + "attImageUploadButtonAndView_onBeforeDragover", "params :" , "(event)", event, "(target)", event.target);
+ 			if(!vn.elementEvents.attImageUploadButtonAndView_onBeforeDragover(event)) return;
  			
  			consoleLog("attImageUploadButtonAndView_onDragover", "params :" , "(event)", event, "(target)", event.target);
  			elementsEvent["attImageUploadButtonAndView_onDragover"](event);
  			
- 			consoleLog("Vanillanote.elementEvents." + "attImageUploadButtonAndView_onAfterDragover", "params :" , "(event)", event, "(target)", event.target);
- 			Vanillanote.elementEvents.attImageUploadButtonAndView_onAfterDragover(event);
+ 			consoleLog("vn.elementEvents." + "attImageUploadButtonAndView_onAfterDragover", "params :" , "(event)", event, "(target)", event.target);
+ 			vn.elementEvents.attImageUploadButtonAndView_onAfterDragover(event);
  			event.stopImmediatePropagation();
  		});
 	    attImageUploadButtonAndView.addEventListener("drop", function(event: any) {
- 			consoleLog("Vanillanote.elementEvents." + "attImageUploadButtonAndView_onBeforeDrop", "params :" , "(event)", event, "(target)", event.target);
- 			if(!Vanillanote.elementEvents.attImageUploadButtonAndView_onBeforeDrop(event)) return;
+ 			consoleLog("vn.elementEvents." + "attImageUploadButtonAndView_onBeforeDrop", "params :" , "(event)", event, "(target)", event.target);
+ 			if(!vn.elementEvents.attImageUploadButtonAndView_onBeforeDrop(event)) return;
  			
  			consoleLog("attImageUploadButtonAndView_onDrop", "params :" , "(event)", event, "(target)", event.target);
  			elementsEvent["attImageUploadButtonAndView_onDrop"](event);
  			
- 			consoleLog("Vanillanote.elementEvents." + "attImageUploadButtonAndView_onAfterDrop", "params :" , "(event)", event, "(target)", event.target);
- 			Vanillanote.elementEvents.attImageUploadButtonAndView_onAfterDrop(event);
+ 			consoleLog("vn.elementEvents." + "attImageUploadButtonAndView_onAfterDrop", "params :" , "(event)", event, "(target)", event.target);
+ 			vn.elementEvents.attImageUploadButtonAndView_onAfterDrop(event);
  			event.stopImmediatePropagation();
  		});
 	    tempElement1.appendChild(attImageUploadButtonAndView);
 	    
-	    attImageViewNextButtion = createElementButton(attImageInsertButton, "button", Vanillanote.consts.CLASS_NAMES.attImageViewNextButtion.id, Vanillanote.consts.CLASS_NAMES.attImageViewNextButtion.className, i, {"isIcon":true, "text":"navigate_next"});
+	    attImageViewNextButtion = createElementButton(attImageInsertButton, "button", vn.consts.CLASS_NAMES.attImageViewNextButtion.id, vn.consts.CLASS_NAMES.attImageViewNextButtion.className, i, {"isIcon":true, "text":"navigate_next"});
 	    attImageViewNextButtion.setAttribute("style","position:absolute;top:50%;transform:translateY(-50%) translateX(-101%);");
 	    tempElement1.appendChild(attImageViewNextButtion);
 	    
 	    attImageModal.appendChild(tempElement1);
 	    
-	    attImageUpload = createElementInput(attImageUpload, Vanillanote.consts.CLASS_NAMES.attImageUpload.id, Vanillanote.consts.CLASS_NAMES.attImageUpload.className, i);
+	    attImageUpload = createElementInput(attImageUpload, vn.consts.CLASS_NAMES.attImageUpload.id, vn.consts.CLASS_NAMES.attImageUpload.className, i);
 	    attImageUpload.setAttribute("type","file");
 	    attImageUpload.setAttribute("multiple","");
-	    attImageAcceptTypes = getCommaStrFromArr(Vanillanote.variables.attImageAcceptTypes[i])
+	    attImageAcceptTypes = getCommaStrFromArr(vn.variables.attImageAcceptTypes[i])
 	    attImageUpload.setAttribute("accept",attImageAcceptTypes);	    
 	    attImageModal.appendChild(attImageUpload);
 	    
-	    tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attImageExplain2.id, Vanillanote.consts.CLASS_NAMES.attImageExplain2.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attImageExplain2});	//COMMENT
+	    tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attImageExplain2.id, vn.consts.CLASS_NAMES.attImageExplain2.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attImageExplain2});	//COMMENT
 	    attImageModal.appendChild(tempElement1);
 	    tempElement1 = document.createElement("br");
 	    attImageModal.appendChild(tempElement1);
 	    
-	    attImageURL = createElementInput(attLinkHref, Vanillanote.consts.CLASS_NAMES.attImageURL.id, Vanillanote.consts.CLASS_NAMES.attImageURL.className, i);
-	    attImageURL.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attImageURLTooltip);	//COMMENT
+	    attImageURL = createElementInput(attLinkHref, vn.consts.CLASS_NAMES.attImageURL.id, vn.consts.CLASS_NAMES.attImageURL.className, i);
+	    attImageURL.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attImageURLTooltip);	//COMMENT
 	    attImageModal.appendChild(attImageURL);
 		
-	    tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attImageFooter.id, Vanillanote.consts.CLASS_NAMES.attImageFooter.className, i);
-	    attImageInsertButton = createElementButton(attImageInsertButton, "button", Vanillanote.consts.CLASS_NAMES.attImageInsertButton.id, Vanillanote.consts.CLASS_NAMES.attImageInsertButton.className, i, {"isIcon":true, "text":"image"});
+	    tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attImageFooter.id, vn.consts.CLASS_NAMES.attImageFooter.className, i);
+	    attImageInsertButton = createElementButton(attImageInsertButton, "button", vn.consts.CLASS_NAMES.attImageInsertButton.id, vn.consts.CLASS_NAMES.attImageInsertButton.className, i, {"isIcon":true, "text":"image"});
 	    tempElement1.appendChild(attImageInsertButton);
 	    attImageModal.appendChild(tempElement1);
 		//==================================================================================
 		//modal att video
-		attVideoModal = createElementBasic(attVideoModal, "div", Vanillanote.consts.CLASS_NAMES.attVideoModal.id, Vanillanote.consts.CLASS_NAMES.attVideoModal.className, i);
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attVideoHeader.id, Vanillanote.consts.CLASS_NAMES.attVideoHeader.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attVideoModalTitle});	//COMMENT
+		attVideoModal = createElementBasic(attVideoModal, "div", vn.consts.CLASS_NAMES.attVideoModal.id, vn.consts.CLASS_NAMES.attVideoModal.className, i);
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attVideoHeader.id, vn.consts.CLASS_NAMES.attVideoHeader.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attVideoModalTitle});	//COMMENT
 		attVideoModal.appendChild(tempElement1);
 		
-	    tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attVideoExplain1.id, Vanillanote.consts.CLASS_NAMES.attVideoExplain1.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attVideoExplain1});	//COMMENT
+	    tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attVideoExplain1.id, vn.consts.CLASS_NAMES.attVideoExplain1.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attVideoExplain1});	//COMMENT
 	    attVideoModal.appendChild(tempElement1);
 
-		attVideoEmbedId = createElementInput(attVideoEmbedId, Vanillanote.consts.CLASS_NAMES.attVideoEmbedId.id, Vanillanote.consts.CLASS_NAMES.attVideoEmbedId.className, i);
-		attVideoEmbedId.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attVideoEmbedIdTooltip);	//COMMENT
+		attVideoEmbedId = createElementInput(attVideoEmbedId, vn.consts.CLASS_NAMES.attVideoEmbedId.id, vn.consts.CLASS_NAMES.attVideoEmbedId.className, i);
+		attVideoEmbedId.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attVideoEmbedIdTooltip);	//COMMENT
 		attVideoModal.appendChild(attVideoEmbedId);
 
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attVideoExplain2.id, Vanillanote.consts.CLASS_NAMES.attVideoExplain2.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].attVideoExplain2});	//COMMENT
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attVideoExplain2.id, vn.consts.CLASS_NAMES.attVideoExplain2.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].attVideoExplain2});	//COMMENT
 	    attVideoModal.appendChild(tempElement1);
 
 		tempElement1 = document.createElement("div");
-		tempElement1.setAttribute("style","padding-left:20px;color:" + Vanillanote.colors.color10[i]);
-		tempElement2 = createElement(tempElement2, "span", "", "modal_att_video_icon", i, {"isIcon":true, "text":"width", "iconStyle":"color:" + Vanillanote.colors.color10[i]});
+		tempElement1.setAttribute("style","padding-left:20px;color:" + vn.colors.color10[i]);
+		tempElement2 = createElement(tempElement2, "span", "", "modal_att_video_icon", i, {"isIcon":true, "text":"width", "iconStyle":"color:" + vn.colors.color10[i]});
 		tempElement1.appendChild(tempElement2);
-		attVideoWidth  = createElementInput(attVideoWidth, Vanillanote.consts.CLASS_NAMES.attVideoWidth.id, Vanillanote.consts.CLASS_NAMES.attVideoWidth.className, i);
-		attVideoWidth.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attVideoWidthTooltip);	//COMMENT
+		attVideoWidth  = createElementInput(attVideoWidth, vn.consts.CLASS_NAMES.attVideoWidth.id, vn.consts.CLASS_NAMES.attVideoWidth.className, i);
+		attVideoWidth.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attVideoWidthTooltip);	//COMMENT
 		attVideoWidth.setAttribute("type", "number");
 		attVideoWidth.setAttribute("style","text-align:right;");
 		tempElement1.appendChild(attVideoWidth);
@@ -8657,11 +8658,11 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		attVideoModal.appendChild(tempElement1);
 
 		tempElement1 = document.createElement("div");
-		tempElement1.setAttribute("style","padding-left:20px;color:" + Vanillanote.colors.color10[i]);
-		tempElement2 = createElement(tempElement2, "span", "", "modal_att_video_icon", i, {"isIcon":true, "text":"height", "iconStyle":"color:" + Vanillanote.colors.color10[i]});
+		tempElement1.setAttribute("style","padding-left:20px;color:" + vn.colors.color10[i]);
+		tempElement2 = createElement(tempElement2, "span", "", "modal_att_video_icon", i, {"isIcon":true, "text":"height", "iconStyle":"color:" + vn.colors.color10[i]});
 		tempElement1.appendChild(tempElement2);
-		attVideoHeight = createElementInput(attVideoHeight, Vanillanote.consts.CLASS_NAMES.attVideoHeight.id, Vanillanote.consts.CLASS_NAMES.attVideoHeight.className, i);
-		attVideoHeight.setAttribute("title",Vanillanote.languageSet[Vanillanote.variables.languages[i]].attVideoHeightTooltip);	//COMMENT
+		attVideoHeight = createElementInput(attVideoHeight, vn.consts.CLASS_NAMES.attVideoHeight.id, vn.consts.CLASS_NAMES.attVideoHeight.className, i);
+		attVideoHeight.setAttribute("title",vn.languageSet[vn.variables.languages[i]].attVideoHeightTooltip);	//COMMENT
 		attVideoHeight.setAttribute("type", "number");
 		attVideoHeight.setAttribute("style","text-align:right;");
 		tempElement1.appendChild(attVideoHeight);
@@ -8670,24 +8671,24 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		tempElement1.appendChild(tempElement2);
 		attVideoModal.appendChild(tempElement1);
 
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attVideoFooter.id, Vanillanote.consts.CLASS_NAMES.attVideoFooter.className, i);
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attVideoFooter.id, vn.consts.CLASS_NAMES.attVideoFooter.className, i);
 
-		attVideoValidCheckText = createElement(attVideoValidCheckText, "span", Vanillanote.consts.CLASS_NAMES.attVideoValidCheckText.id, Vanillanote.consts.CLASS_NAMES.attVideoValidCheckText.className, i);
-		attVideoValidCheckbox = createElementInputCheckbox(attVideoValidCheckbox, Vanillanote.consts.CLASS_NAMES.attVideoValidCheckbox.id, Vanillanote.consts.CLASS_NAMES.attVideoValidCheckbox.className, i);
+		attVideoValidCheckText = createElement(attVideoValidCheckText, "span", vn.consts.CLASS_NAMES.attVideoValidCheckText.id, vn.consts.CLASS_NAMES.attVideoValidCheckText.className, i);
+		attVideoValidCheckbox = createElementInputCheckbox(attVideoValidCheckbox, vn.consts.CLASS_NAMES.attVideoValidCheckbox.id, vn.consts.CLASS_NAMES.attVideoValidCheckbox.className, i);
 		attVideoValidCheckbox.style.display = "none";
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.attVideoFooter.id, Vanillanote.consts.CLASS_NAMES.attVideoFooter.className, i);
-		attVideoInsertButton = createElementButton(attVideoInsertButton, "button", Vanillanote.consts.CLASS_NAMES.attVideoInsertButton.id, Vanillanote.consts.CLASS_NAMES.attVideoInsertButton.className, i, {"isIcon":true, "text":"videocam"});
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.attVideoFooter.id, vn.consts.CLASS_NAMES.attVideoFooter.className, i);
+		attVideoInsertButton = createElementButton(attVideoInsertButton, "button", vn.consts.CLASS_NAMES.attVideoInsertButton.id, vn.consts.CLASS_NAMES.attVideoInsertButton.className, i, {"isIcon":true, "text":"videocam"});
 		tempElement1.appendChild(attVideoValidCheckText);
 		tempElement1.appendChild(attVideoValidCheckbox);
 	    tempElement1.appendChild(attVideoInsertButton);
 	    attVideoModal.appendChild(tempElement1);
 		//==================================================================================
 		//att link tooltip
-		attLinkTooltip = createElement(attLinkTooltip, "div", Vanillanote.consts.CLASS_NAMES.attLinkTooltip.id, Vanillanote.consts.CLASS_NAMES.attLinkTooltip.className, i);
-		attLinkTooltipHref = createElement(attLinkTooltipHref, "a", Vanillanote.consts.CLASS_NAMES.attLinkTooltipHref.id, Vanillanote.consts.CLASS_NAMES.attLinkTooltipHref.className, i);
+		attLinkTooltip = createElement(attLinkTooltip, "div", vn.consts.CLASS_NAMES.attLinkTooltip.id, vn.consts.CLASS_NAMES.attLinkTooltip.className, i);
+		attLinkTooltipHref = createElement(attLinkTooltipHref, "a", vn.consts.CLASS_NAMES.attLinkTooltipHref.id, vn.consts.CLASS_NAMES.attLinkTooltipHref.className, i);
 		attLinkTooltipHref.setAttribute("target","_blank");
-		attLinkTooltipEditButton = createElementButton(attLinkTooltipEditButton, "span", Vanillanote.consts.CLASS_NAMES.attLinkTooltipEditButton.id, Vanillanote.consts.CLASS_NAMES.attLinkTooltipEditButton.className, i, {"isIcon":true, "text":"add_link", "iconStyle":"font-size:0.9em"});
-		attLinkTooltipUnlinkButton = createElementButton(attLinkTooltipUnlinkButton, "span", Vanillanote.consts.CLASS_NAMES.attLinkTooltipUnlinkButton.id, Vanillanote.consts.CLASS_NAMES.attLinkTooltipUnlinkButton.className, i, {"isIcon":true, "text":"link_off", "iconStyle":"font-size:0.9em"});
+		attLinkTooltipEditButton = createElementButton(attLinkTooltipEditButton, "span", vn.consts.CLASS_NAMES.attLinkTooltipEditButton.id, vn.consts.CLASS_NAMES.attLinkTooltipEditButton.className, i, {"isIcon":true, "text":"add_link", "iconStyle":"font-size:0.9em"});
+		attLinkTooltipUnlinkButton = createElementButton(attLinkTooltipUnlinkButton, "span", vn.consts.CLASS_NAMES.attLinkTooltipUnlinkButton.id, vn.consts.CLASS_NAMES.attLinkTooltipUnlinkButton.className, i, {"isIcon":true, "text":"link_off", "iconStyle":"font-size:0.9em"});
 		
 		attLinkTooltip.appendChild(attLinkTooltipEditButton);
 		attLinkTooltip.appendChild(attLinkTooltipUnlinkButton);
@@ -8695,26 +8696,26 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		
 		//==================================================================================
 		//att image tooltip
-		attImageAndVideoTooltip = createElement(attImageAndVideoTooltip, "div", Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltip.id, Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltip.className, i);
+		attImageAndVideoTooltip = createElement(attImageAndVideoTooltip, "div", vn.consts.CLASS_NAMES.attImageAndVideoTooltip.id, vn.consts.CLASS_NAMES.attImageAndVideoTooltip.className, i);
 		
 		tempElement1 = document.createElement("div");
 		
 		tempElement2 = document.createElement("span");
 		tempElement2.setAttribute("class",getClassName(i, "small_text_box"));
 		tempElement2.setAttribute("style","padding: 0 0 0 10px;");
-		tempElement2.textContent = Vanillanote.languageSet[Vanillanote.variables.languages[i]].attImageAndVideoTooltipWidthInput;	//COMMENT
+		tempElement2.textContent = vn.languageSet[vn.variables.languages[i]].attImageAndVideoTooltipWidthInput;	//COMMENT
 		tempElement1.appendChild(tempElement2);
 		
-		attImageAndVideoTooltipWidthInput = createElementInput(attImageAndVideoTooltipWidthInput, Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipWidthInput.id, Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipWidthInput.className, i);
+		attImageAndVideoTooltipWidthInput = createElementInput(attImageAndVideoTooltipWidthInput, vn.consts.CLASS_NAMES.attImageAndVideoTooltipWidthInput.id, vn.consts.CLASS_NAMES.attImageAndVideoTooltipWidthInput.className, i);
 		attImageAndVideoTooltipWidthInput.addEventListener("keyup", function(event: any) {
- 			consoleLog("Vanillanote.elementEvents." + "attImageAndVideoTooltipWidthInput_onBeforeKeyup", "params :" , "(event)", event, "(target)", event.target);
- 			if(!Vanillanote.elementEvents.attImageAndVideoTooltipWidthInput_onBeforeKeyup(event)) return;
+ 			consoleLog("vn.elementEvents." + "attImageAndVideoTooltipWidthInput_onBeforeKeyup", "params :" , "(event)", event, "(target)", event.target);
+ 			if(!vn.elementEvents.attImageAndVideoTooltipWidthInput_onBeforeKeyup(event)) return;
  			
  			consoleLog("attImageAndVideoTooltipWidthInput_onKeyup", "params :" , "(event)", event, "(target)", event.target);
  			elementsEvent["attImageAndVideoTooltipWidthInput_onKeyup"](event);
  			
- 			consoleLog("Vanillanote.elementEvents." + "attImageAndVideoTooltipWidthInput_onAfterKeyup", "params :" , "(event)", event, "(target)", event.target);
- 			Vanillanote.elementEvents.attImageAndVideoTooltipWidthInput_onAfterKeyup(event);
+ 			consoleLog("vn.elementEvents." + "attImageAndVideoTooltipWidthInput_onAfterKeyup", "params :" , "(event)", event, "(target)", event.target);
+ 			vn.elementEvents.attImageAndVideoTooltipWidthInput_onAfterKeyup(event);
  			event.stopImmediatePropagation();
  		});
 		attImageAndVideoTooltipWidthInput.setAttribute("type","number");
@@ -8728,38 +8729,38 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		
 		tempElement2 = document.createElement("span");
 		tempElement2.setAttribute("class",getClassName(i, "small_text_box"));
-		tempElement2.textContent = Vanillanote.languageSet[Vanillanote.variables.languages[i]].attImageAndVideoTooltipFloatRadio;	//COMMENT
+		tempElement2.textContent = vn.languageSet[vn.variables.languages[i]].attImageAndVideoTooltipFloatRadio;	//COMMENT
 		tempElement1.appendChild(tempElement2);
 		
 		attImageAndVideoTooltipFloatRadioNone = createElementInputRadio(
 												attImageAndVideoTooltipFloatRadioNone,
-												Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioNone.id,
-												Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioNone.className,
+												vn.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioNone.id,
+												vn.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioNone.className,
 												getId(i, "attImageAndVideoTooltipFloatRadio"),
 												i
 											);
 		tempElement1.appendChild(attImageAndVideoTooltipFloatRadioNone);
-		tempElement2 = createElementRadioLabel(getId(i, Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioNone.id), "close");
+		tempElement2 = createElementRadioLabel(getId(i, vn.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioNone.id), "close");
 		tempElement1.appendChild(tempElement2);
 		attImageAndVideoTooltipFloatRadioLeft = createElementInputRadio(
 												attImageAndVideoTooltipFloatRadioLeft,
-												Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioLeft.id,
-												Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioLeft.className,
+												vn.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioLeft.id,
+												vn.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioLeft.className,
 												getId(i, "attImageAndVideoTooltipFloatRadio"),
 												i
 											);
 		tempElement1.appendChild(attImageAndVideoTooltipFloatRadioLeft);
-		tempElement2 = createElementRadioLabel(getId(i, Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioLeft.id), "art_track");
+		tempElement2 = createElementRadioLabel(getId(i, vn.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioLeft.id), "art_track");
 		tempElement1.appendChild(tempElement2);
 		attImageAndVideoTooltipFloatRadioRight = createElementInputRadio(
 												attImageAndVideoTooltipFloatRadioRight,
-												Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioRight.id,
-												Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioRight.className,
+												vn.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioRight.id,
+												vn.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioRight.className,
 												getId(i, "attImageAndVideoTooltipFloatRadio"),
 												i
 											);
 		tempElement1.appendChild(attImageAndVideoTooltipFloatRadioRight);
-		tempElement2 = createElementRadioLabel(getId(i, Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioRight.id), "burst_mode");
+		tempElement2 = createElementRadioLabel(getId(i, vn.consts.CLASS_NAMES.attImageAndVideoTooltipFloatRadioRight.id), "burst_mode");
 		tempElement1.appendChild(tempElement2);
 		attImageAndVideoTooltip.appendChild(tempElement1);
 		
@@ -8767,55 +8768,55 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		
 		tempElement2 = document.createElement("span");
 		tempElement2.setAttribute("class",getClassName(i, "small_text_box"));
-		tempElement2.textContent = Vanillanote.languageSet[Vanillanote.variables.languages[i]].attImageAndVideoTooltipShapeRadio;	//COMMENT
+		tempElement2.textContent = vn.languageSet[vn.variables.languages[i]].attImageAndVideoTooltipShapeRadio;	//COMMENT
 		tempElement1.appendChild(tempElement2);
 		
 		attImageAndVideoTooltipShapeRadioSquare = createElementInputRadio(
 													attImageAndVideoTooltipShapeRadioSquare,
-													Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioSquare.id,
-													Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioSquare.className,
+													vn.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioSquare.id,
+													vn.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioSquare.className,
 													getId(i, "attImageAndVideoTooltipShapeRadio"),
 													i
 												);
 		tempElement1.appendChild(attImageAndVideoTooltipShapeRadioSquare);
-		tempElement2 = createElementRadioLabel(getId(i, Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioSquare.id), "crop_5_4");
+		tempElement2 = createElementRadioLabel(getId(i, vn.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioSquare.id), "crop_5_4");
 		tempElement1.appendChild(tempElement2);
 		attImageAndVideoTooltipShapeRadioRadius = createElementInputRadio(
 													attImageAndVideoTooltipShapeRadioRadius,
-													Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioRadius.id,
-													Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioRadius.className,
+													vn.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioRadius.id,
+													vn.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioRadius.className,
 													getId(i, "attImageAndVideoTooltipShapeRadio"),
 													i
 												);
 		tempElement1.appendChild(attImageAndVideoTooltipShapeRadioRadius);
-		tempElement2 = createElementRadioLabel(getId(i, Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioRadius.id), "aspect_ratio");
+		tempElement2 = createElementRadioLabel(getId(i, vn.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioRadius.id), "aspect_ratio");
 		tempElement1.appendChild(tempElement2);
 		attImageAndVideoTooltipShapeRadioCircle = createElementInputRadio(
 													attImageAndVideoTooltipShapeRadioCircle,
-													Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioCircle.id,
-													Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioCircle.className,
+													vn.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioCircle.id,
+													vn.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioCircle.className,
 													getId(i, "attImageAndVideoTooltipShapeRadio"),
 													i
 												);
 		tempElement1.appendChild(attImageAndVideoTooltipShapeRadioCircle);
-		tempElement2 = createElementRadioLabel(getId(i, Vanillanote.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioCircle.id), "circle");
+		tempElement2 = createElementRadioLabel(getId(i, vn.consts.CLASS_NAMES.attImageAndVideoTooltipShapeRadioCircle.id), "circle");
 		tempElement1.appendChild(tempElement2);
 		
 		attImageAndVideoTooltip.appendChild(tempElement1);
 		
 		//==================================================================================
 		//modal help
-		helpModal = createElementBasic(helpModal, "div", Vanillanote.consts.CLASS_NAMES.helpModal.id, Vanillanote.consts.CLASS_NAMES.helpModal.className, i);
+		helpModal = createElementBasic(helpModal, "div", vn.consts.CLASS_NAMES.helpModal.id, vn.consts.CLASS_NAMES.helpModal.className, i);
 		
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.helpHeader.id, Vanillanote.consts.CLASS_NAMES.helpHeader.className, i, {"isIcon":false, "text":Vanillanote.languageSet[Vanillanote.variables.languages[i]].helpModalTitle});	//COMMENT
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.helpHeader.id, vn.consts.CLASS_NAMES.helpHeader.className, i, {"isIcon":false, "text":vn.languageSet[vn.variables.languages[i]].helpModalTitle});	//COMMENT
 		helpModal.appendChild(tempElement1);
 		
-		helpMain = createElement(helpMain, "div", Vanillanote.consts.CLASS_NAMES.helpMain.id, Vanillanote.consts.CLASS_NAMES.helpMain.className, i);
+		helpMain = createElement(helpMain, "div", vn.consts.CLASS_NAMES.helpMain.id, vn.consts.CLASS_NAMES.helpMain.className, i);
 		tempElement1 = document.createElement("table");
 		var tempKeys;
-		for(var j = 0; j < Vanillanote.languageSet[Vanillanote.variables.languages[i]].helpContent.length; j++) {
+		for(var j = 0; j < vn.languageSet[vn.variables.languages[i]].helpContent.length; j++) {
 			tempElement2 = document.createElement("tr");
-			tempKeys = Object.keys(Vanillanote.languageSet[Vanillanote.variables.languages[i]].helpContent[j]);
+			tempKeys = Object.keys(vn.languageSet[vn.variables.languages[i]].helpContent[j]);
 			for(var k = 0; k < tempKeys.length; k++) {
 				tempElement3 = document.createElement("td");
 				tempElement3.textContent = tempKeys[k];
@@ -8823,7 +8824,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				tempElement2.appendChild(tempElement3);
 				tempElement3 = document.createElement("td");
 				tempElement3.setAttribute("style","width:70%;padding:0 12px 6px 12px;border:none;");
-				tempElement3.textContent = Vanillanote.languageSet[Vanillanote.variables.languages[i]].helpContent[j][tempKeys[k]];
+				tempElement3.textContent = vn.languageSet[vn.variables.languages[i]].helpContent[j][tempKeys[k]];
 				tempElement2.appendChild(tempElement3);
 			}
 			tempElement1.appendChild(tempElement2);
@@ -8831,15 +8832,15 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		helpMain.appendChild(tempElement1);
 		helpModal.appendChild(helpMain);
 		
-		tempElement1 = createElement(tempElement1, "div", Vanillanote.consts.CLASS_NAMES.helpFooter.id, Vanillanote.consts.CLASS_NAMES.helpFooter.className, i);
+		tempElement1 = createElement(tempElement1, "div", vn.consts.CLASS_NAMES.helpFooter.id, vn.consts.CLASS_NAMES.helpFooter.className, i);
 		tempElement1.setAttribute("style","height:25px;");
 		helpModal.appendChild(tempElement1);
 		
 		//==================================================================================
 		//placeholder
 		//==================================================================================
-		if(!Vanillanote.elements.placeholders[i]) {
-			placeholder = createElementBasic(placeholder, "div", Vanillanote.consts.CLASS_NAMES.placeholder.id, Vanillanote.consts.CLASS_NAMES.placeholder.className, i);
+		if(!vn.elements.placeholders[i]) {
+			placeholder = createElementBasic(placeholder, "div", vn.consts.CLASS_NAMES.placeholder.id, vn.consts.CLASS_NAMES.placeholder.className, i);
 			
 			if(placeholderTitle) {
 				tempElement1 = document.createElement("h5");
@@ -8852,10 +8853,10 @@ function createVanillanote(Vanillanote: Vanillanote) {
 				placeholder.appendChild(tempElement1);
 			}
 			
-			Vanillanote.elements.placeholders[i] = placeholder;
+			vn.elements.placeholders[i] = placeholder;
 		}
 		else {
-			placeholder = Vanillanote.elements.placeholders[i];
+			placeholder = vn.elements.placeholders[i];
 		}
 		
 		//==================================================================================
@@ -8868,7 +8869,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		modalBack.appendChild(helpModal);
 		template.appendChild(modalBack);
 		template.appendChild(placeholder);
-		if(Vanillanote.variables.toolToggles[i]) {
+		if(vn.variables.toolToggles[i]) {
 			tool.appendChild(toolToggleButton);
 		}
 		tool.appendChild(paragraphStyleSelect);
@@ -8892,7 +8893,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		tool.appendChild(undoButton);
 		tool.appendChild(redoButton);
 		tool.appendChild(helpButton);
-		if(Vanillanote.variables.toolPositions[i] === "BOTTOM") {
+		if(vn.variables.toolPositions[i] === "BOTTOM") {
 			template.appendChild(textarea);
 			template.appendChild(attLinkTooltip);
 			template.appendChild(attImageAndVideoTooltip);
@@ -8909,201 +8910,201 @@ function createVanillanote(Vanillanote: Vanillanote) {
 		//==================================================================================
 		//push elements
 		//==================================================================================
-		Vanillanote.elements.templates.push(template);
-		Vanillanote.elements.tools.push(tool);
-		Vanillanote.elements.textareas.push(textarea);
-		Vanillanote.elements.paragraphStyleSelects.push(paragraphStyleSelect);
-		Vanillanote.elements.toolToggleButtons.push(toolToggleButton);
-		Vanillanote.elements.paragraphStyleSelectBoxes.push(paragraphStyleSelectBox);
-		Vanillanote.elements.boldButtons.push(boldButton);
-		Vanillanote.elements.underlineButtons.push(underlineButton);
-		Vanillanote.elements.italicButtons.push(italicButton);
-		Vanillanote.elements.ulButtons.push(ulButton);
-		Vanillanote.elements.olButtons.push(olButton);
-		Vanillanote.elements.textAlignSelects.push(textAlignSelect);
-		Vanillanote.elements.textAlignSelectBoxes.push(textAlignSelectBox);
-		Vanillanote.elements.attLinkButtons.push(attLinkButton);
-		Vanillanote.elements.attFileButtons.push(attFileButton);
-		Vanillanote.elements.attImageButtons.push(attImageButton);
-		Vanillanote.elements.attVideoButtons.push(attVideoButton);
-		Vanillanote.elements.fontFamilySelects.push(fontFamilySelect);
-		Vanillanote.elements.fontFamilySelectBoxes.push(fontFamilySelectBox);
+		vn.elements.templates.push(template);
+		vn.elements.tools.push(tool);
+		vn.elements.textareas.push(textarea);
+		vn.elements.paragraphStyleSelects.push(paragraphStyleSelect);
+		vn.elements.toolToggleButtons.push(toolToggleButton);
+		vn.elements.paragraphStyleSelectBoxes.push(paragraphStyleSelectBox);
+		vn.elements.boldButtons.push(boldButton);
+		vn.elements.underlineButtons.push(underlineButton);
+		vn.elements.italicButtons.push(italicButton);
+		vn.elements.ulButtons.push(ulButton);
+		vn.elements.olButtons.push(olButton);
+		vn.elements.textAlignSelects.push(textAlignSelect);
+		vn.elements.textAlignSelectBoxes.push(textAlignSelectBox);
+		vn.elements.attLinkButtons.push(attLinkButton);
+		vn.elements.attFileButtons.push(attFileButton);
+		vn.elements.attImageButtons.push(attImageButton);
+		vn.elements.attVideoButtons.push(attVideoButton);
+		vn.elements.fontFamilySelects.push(fontFamilySelect);
+		vn.elements.fontFamilySelectBoxes.push(fontFamilySelectBox);
 		
-		Vanillanote.elements.colorTextSelects.push(colorTextSelect);
-		Vanillanote.elements.colorTextSelectBoxes.push(colorTextSelectBox);
-		Vanillanote.elements.colorText0s.push(colorText0);
-		Vanillanote.elements.colorText1s.push(colorText1);
-		Vanillanote.elements.colorText2s.push(colorText2);
-		Vanillanote.elements.colorText3s.push(colorText3);
-		Vanillanote.elements.colorText4s.push(colorText4);
-		Vanillanote.elements.colorText5s.push(colorText5);
-		Vanillanote.elements.colorText6s.push(colorText6);
-		Vanillanote.elements.colorText7s.push(colorText7);
-		Vanillanote.elements.colorTextRInputs.push(colorTextRInput);
-		Vanillanote.elements.colorTextGInputs.push(colorTextGInput);
-		Vanillanote.elements.colorTextBInputs.push(colorTextBInput);
-		Vanillanote.elements.colorTextOpacityInputs.push(colorTextOpacityInput);
+		vn.elements.colorTextSelects.push(colorTextSelect);
+		vn.elements.colorTextSelectBoxes.push(colorTextSelectBox);
+		vn.elements.colorText0s.push(colorText0);
+		vn.elements.colorText1s.push(colorText1);
+		vn.elements.colorText2s.push(colorText2);
+		vn.elements.colorText3s.push(colorText3);
+		vn.elements.colorText4s.push(colorText4);
+		vn.elements.colorText5s.push(colorText5);
+		vn.elements.colorText6s.push(colorText6);
+		vn.elements.colorText7s.push(colorText7);
+		vn.elements.colorTextRInputs.push(colorTextRInput);
+		vn.elements.colorTextGInputs.push(colorTextGInput);
+		vn.elements.colorTextBInputs.push(colorTextBInput);
+		vn.elements.colorTextOpacityInputs.push(colorTextOpacityInput);
 		
-		Vanillanote.elements.colorBackSelects.push(colorBackSelect);
-		Vanillanote.elements.colorBackSelectBoxes.push(colorBackSelectBox);
-		Vanillanote.elements.colorBack0s.push(colorBack0);
-		Vanillanote.elements.colorBack1s.push(colorBack1);
-		Vanillanote.elements.colorBack2s.push(colorBack2);
-		Vanillanote.elements.colorBack3s.push(colorBack3);
-		Vanillanote.elements.colorBack4s.push(colorBack4);
-		Vanillanote.elements.colorBack5s.push(colorBack5);
-		Vanillanote.elements.colorBack6s.push(colorBack6);
-		Vanillanote.elements.colorBack7s.push(colorBack7);
-		Vanillanote.elements.colorBackRInputs.push(colorBackRInput);
-		Vanillanote.elements.colorBackGInputs.push(colorBackGInput);
-		Vanillanote.elements.colorBackBInputs.push(colorBackBInput);
-		Vanillanote.elements.colorBackOpacityInputs.push(colorBackOpacityInput);
-		Vanillanote.elements.formatClearButtons.push(formatClearButton);
-		Vanillanote.elements.undoButtons.push(undoButton);
-		Vanillanote.elements.redoButtons.push(redoButton);
-		Vanillanote.elements.helpButtons.push(helpButton);
-		Vanillanote.elements.fontSizeInputBoxes.push(fontSizeInputBox);
-		Vanillanote.elements.fontSizeInputs.push(fontSizeInput);
-		Vanillanote.elements.letterSpacingInputBoxes.push(letterSpacingInputBox);
-		Vanillanote.elements.letterSpacingInputs.push(letterSpacingInput);
-		Vanillanote.elements.lineHeightInputBoxes.push(lineHeightInputBox);
-		Vanillanote.elements.lineHeightInputs.push(lineHeightInput);
-		Vanillanote.elements.backModals.push(modalBack);
+		vn.elements.colorBackSelects.push(colorBackSelect);
+		vn.elements.colorBackSelectBoxes.push(colorBackSelectBox);
+		vn.elements.colorBack0s.push(colorBack0);
+		vn.elements.colorBack1s.push(colorBack1);
+		vn.elements.colorBack2s.push(colorBack2);
+		vn.elements.colorBack3s.push(colorBack3);
+		vn.elements.colorBack4s.push(colorBack4);
+		vn.elements.colorBack5s.push(colorBack5);
+		vn.elements.colorBack6s.push(colorBack6);
+		vn.elements.colorBack7s.push(colorBack7);
+		vn.elements.colorBackRInputs.push(colorBackRInput);
+		vn.elements.colorBackGInputs.push(colorBackGInput);
+		vn.elements.colorBackBInputs.push(colorBackBInput);
+		vn.elements.colorBackOpacityInputs.push(colorBackOpacityInput);
+		vn.elements.formatClearButtons.push(formatClearButton);
+		vn.elements.undoButtons.push(undoButton);
+		vn.elements.redoButtons.push(redoButton);
+		vn.elements.helpButtons.push(helpButton);
+		vn.elements.fontSizeInputBoxes.push(fontSizeInputBox);
+		vn.elements.fontSizeInputs.push(fontSizeInput);
+		vn.elements.letterSpacingInputBoxes.push(letterSpacingInputBox);
+		vn.elements.letterSpacingInputs.push(letterSpacingInput);
+		vn.elements.lineHeightInputBoxes.push(lineHeightInputBox);
+		vn.elements.lineHeightInputs.push(lineHeightInput);
+		vn.elements.backModals.push(modalBack);
 		
-		Vanillanote.elements.attLinkModals.push(attLinkModal);
-		Vanillanote.elements.attLinkTexts.push(attLinkText);
-		Vanillanote.elements.attLinkHrefs.push(attLinkHref);
-		Vanillanote.elements.attLinkIsBlankCheckboxes.push(attLinkIsBlankCheckbox);
-		Vanillanote.elements.attLinkValidCheckTexts.push(attLinkValidCheckText);
-		Vanillanote.elements.attLinkValidCheckboxes.push(attLinkValidCheckbox);
-		Vanillanote.elements.attLinkInsertButtons.push(attLinkInsertButton);
-		Vanillanote.elements.attLinkTooltips.push(attLinkTooltip);
-		Vanillanote.elements.attLinkTooltipHrefs.push(attLinkTooltipHref);
-		Vanillanote.elements.attLinkTooltipEditButtons.push(attLinkTooltipEditButton);
-		Vanillanote.elements.attLinkTooltipUnlinkButtons.push(attLinkTooltipUnlinkButton);
+		vn.elements.attLinkModals.push(attLinkModal);
+		vn.elements.attLinkTexts.push(attLinkText);
+		vn.elements.attLinkHrefs.push(attLinkHref);
+		vn.elements.attLinkIsBlankCheckboxes.push(attLinkIsBlankCheckbox);
+		vn.elements.attLinkValidCheckTexts.push(attLinkValidCheckText);
+		vn.elements.attLinkValidCheckboxes.push(attLinkValidCheckbox);
+		vn.elements.attLinkInsertButtons.push(attLinkInsertButton);
+		vn.elements.attLinkTooltips.push(attLinkTooltip);
+		vn.elements.attLinkTooltipHrefs.push(attLinkTooltipHref);
+		vn.elements.attLinkTooltipEditButtons.push(attLinkTooltipEditButton);
+		vn.elements.attLinkTooltipUnlinkButtons.push(attLinkTooltipUnlinkButton);
 		
-		Vanillanote.elements.attFileModals.push(attFileModal);
-	    Vanillanote.elements.attFilelayouts.push(attFilelayout);
-	    Vanillanote.elements.attFileUploadButtons.push(attFileUploadButton);
-	    Vanillanote.elements.attFileUploads.push(attFileUpload);
-	    Vanillanote.elements.attFileUploadDivs.push(attFileUploadDiv);
-	    Vanillanote.elements.attFileInsertButtons.push(attFileInsertButton);
+		vn.elements.attFileModals.push(attFileModal);
+	    vn.elements.attFilelayouts.push(attFilelayout);
+	    vn.elements.attFileUploadButtons.push(attFileUploadButton);
+	    vn.elements.attFileUploads.push(attFileUpload);
+	    vn.elements.attFileUploadDivs.push(attFileUploadDiv);
+	    vn.elements.attFileInsertButtons.push(attFileInsertButton);
 	    
-		Vanillanote.elements.attImageModals.push(attImageModal);
-		Vanillanote.elements.attImageUploadButtonAndViews.push(attImageUploadButtonAndView);
-		Vanillanote.elements.attImageViewPreButtions.push(attImageViewPreButtion);
-		Vanillanote.elements.attImageViewNextButtions.push(attImageViewNextButtion);
-		Vanillanote.elements.attImageUploads.push(attImageUpload);
-		Vanillanote.elements.attImageURLs.push(attImageURL);
-		Vanillanote.elements.attImageInsertButtons.push(attImageInsertButton);
+		vn.elements.attImageModals.push(attImageModal);
+		vn.elements.attImageUploadButtonAndViews.push(attImageUploadButtonAndView);
+		vn.elements.attImageViewPreButtions.push(attImageViewPreButtion);
+		vn.elements.attImageViewNextButtions.push(attImageViewNextButtion);
+		vn.elements.attImageUploads.push(attImageUpload);
+		vn.elements.attImageURLs.push(attImageURL);
+		vn.elements.attImageInsertButtons.push(attImageInsertButton);
 
-		Vanillanote.elements.attVideoModals.push(attVideoModal);
-		Vanillanote.elements.attVideoEmbedIds.push(attVideoEmbedId);
-		Vanillanote.elements.attVideoWidthes.push(attVideoWidth);
-		Vanillanote.elements.attVideoHeights.push(attVideoHeight);
-		Vanillanote.elements.attVideoValidCheckTexts.push(attVideoValidCheckText);
-		Vanillanote.elements.attVideoValidCheckboxes.push(attVideoValidCheckbox);
-		Vanillanote.elements.attVideoInsertButtons.push(attVideoInsertButton);
+		vn.elements.attVideoModals.push(attVideoModal);
+		vn.elements.attVideoEmbedIds.push(attVideoEmbedId);
+		vn.elements.attVideoWidthes.push(attVideoWidth);
+		vn.elements.attVideoHeights.push(attVideoHeight);
+		vn.elements.attVideoValidCheckTexts.push(attVideoValidCheckText);
+		vn.elements.attVideoValidCheckboxes.push(attVideoValidCheckbox);
+		vn.elements.attVideoInsertButtons.push(attVideoInsertButton);
 		
-		Vanillanote.elements.attImageAndVideoTooltips.push(attImageAndVideoTooltip);
-		Vanillanote.elements.attImageAndVideoTooltipWidthInputs.push(attImageAndVideoTooltipWidthInput);
-		Vanillanote.elements.attImageAndVideoTooltipFloatRadioNones.push(attImageAndVideoTooltipFloatRadioNone);
-		Vanillanote.elements.attImageAndVideoTooltipFloatRadioLefts.push(attImageAndVideoTooltipFloatRadioLeft);
-		Vanillanote.elements.attImageAndVideoTooltipFloatRadioRights.push(attImageAndVideoTooltipFloatRadioRight);
-		Vanillanote.elements.attImageAndVideoTooltipShapeRadioSquares.push(attImageAndVideoTooltipShapeRadioSquare);
-		Vanillanote.elements.attImageAndVideoTooltipShapeRadioRadiuses.push(attImageAndVideoTooltipShapeRadioRadius);
-		Vanillanote.elements.attImageAndVideoTooltipShapeRadioCircles.push(attImageAndVideoTooltipShapeRadioCircle);
+		vn.elements.attImageAndVideoTooltips.push(attImageAndVideoTooltip);
+		vn.elements.attImageAndVideoTooltipWidthInputs.push(attImageAndVideoTooltipWidthInput);
+		vn.elements.attImageAndVideoTooltipFloatRadioNones.push(attImageAndVideoTooltipFloatRadioNone);
+		vn.elements.attImageAndVideoTooltipFloatRadioLefts.push(attImageAndVideoTooltipFloatRadioLeft);
+		vn.elements.attImageAndVideoTooltipFloatRadioRights.push(attImageAndVideoTooltipFloatRadioRight);
+		vn.elements.attImageAndVideoTooltipShapeRadioSquares.push(attImageAndVideoTooltipShapeRadioSquare);
+		vn.elements.attImageAndVideoTooltipShapeRadioRadiuses.push(attImageAndVideoTooltipShapeRadioRadius);
+		vn.elements.attImageAndVideoTooltipShapeRadioCircles.push(attImageAndVideoTooltipShapeRadioCircle);
 		
-		Vanillanote.elements.helpModals.push(helpModal);
+		vn.elements.helpModals.push(helpModal);
 		
 		//==================================================================================
 		//push variables
 		//==================================================================================
-		Vanillanote.variables.useMobileActiveMode.push(isMobileDevice());
+		vn.variables.useMobileActiveMode.push(isMobileDevice());
 		
-		Vanillanote.variables.boldToggles.push(false);
-		Vanillanote.variables.underlineToggles.push(false);
-		Vanillanote.variables.italicToggles.push(false);
-		Vanillanote.variables.ulToggles.push(false);
-		Vanillanote.variables.olToggles.push(false);
+		vn.variables.boldToggles.push(false);
+		vn.variables.underlineToggles.push(false);
+		vn.variables.italicToggles.push(false);
+		vn.variables.ulToggles.push(false);
+		vn.variables.olToggles.push(false);
 		
-		Vanillanote.variables.fontSizes.push(defaultFontSize);
-		Vanillanote.variables.letterSpacings.push("0");
-		Vanillanote.variables.lineHeights.push(defaultLineHeight);
-		Vanillanote.variables.fontFamilies.push(defaultFontFamiliy);
+		vn.variables.fontSizes.push(defaultFontSize);
+		vn.variables.letterSpacings.push("0");
+		vn.variables.lineHeights.push(defaultLineHeight);
+		vn.variables.fontFamilies.push(defaultFontFamiliy);
 		
-		Vanillanote.variables.colorTextRs.push(getExtractColorValue(Vanillanote.colors.color12[i],"R"));
-		Vanillanote.variables.colorTextGs.push(getExtractColorValue(Vanillanote.colors.color12[i],"G"));
-		Vanillanote.variables.colorTextBs.push(getExtractColorValue(Vanillanote.colors.color12[i],"B"));
-		Vanillanote.variables.colorTextOs.push("1");
-		Vanillanote.variables.colorTextRGBs.push(Vanillanote.colors.color12[i]);
-		Vanillanote.variables.colorTextOpacitys.push("1");
+		vn.variables.colorTextRs.push(getExtractColorValue(vn.colors.color12[i],"R"));
+		vn.variables.colorTextGs.push(getExtractColorValue(vn.colors.color12[i],"G"));
+		vn.variables.colorTextBs.push(getExtractColorValue(vn.colors.color12[i],"B"));
+		vn.variables.colorTextOs.push("1");
+		vn.variables.colorTextRGBs.push(vn.colors.color12[i]);
+		vn.variables.colorTextOpacitys.push("1");
 		
-		Vanillanote.variables.colorBackRs.push(getExtractColorValue(Vanillanote.colors.color13[i],"R"));
-		Vanillanote.variables.colorBackGs.push(getExtractColorValue(Vanillanote.colors.color13[i],"G"));
-		Vanillanote.variables.colorBackBs.push(getExtractColorValue(Vanillanote.colors.color13[i],"B"));
-		Vanillanote.variables.colorBackOs.push("0");
-		Vanillanote.variables.colorBackRGBs.push(Vanillanote.colors.color13[i]);
-		Vanillanote.variables.colorBackOpacitys.push("0");
+		vn.variables.colorBackRs.push(getExtractColorValue(vn.colors.color13[i],"R"));
+		vn.variables.colorBackGs.push(getExtractColorValue(vn.colors.color13[i],"G"));
+		vn.variables.colorBackBs.push(getExtractColorValue(vn.colors.color13[i],"B"));
+		vn.variables.colorBackOs.push("0");
+		vn.variables.colorBackRGBs.push(vn.colors.color13[i]);
+		vn.variables.colorBackOpacitys.push("0");
 		
-    	Vanillanote.variables.attTempFiles.push((new Object as any));
-    	Vanillanote.variables.attFiles.push((new Object as any));
-    	Vanillanote.variables.attTempImages.push((new Object as any));
-    	Vanillanote.variables.attImages.push((new Object as any));
-		Vanillanote.variables.editDragUnitElements.push([]);
+    	vn.variables.attTempFiles.push((new Object as any));
+    	vn.variables.attFiles.push((new Object as any));
+    	vn.variables.attTempImages.push((new Object as any));
+    	vn.variables.attImages.push((new Object as any));
+		vn.variables.editDragUnitElements.push([]);
 		//An incomprehensible error...
-// 		Vanillanote.variables.recodeContings.push(0);
-// 		Vanillanote.variables.recodeNotes.push([Vanillanote.elements.textareas[i].cloneNode(true)]);
-		Vanillanote.variables.recodeContings.push(-1);
-		Vanillanote.variables.recodeNotes.push([]);
+// 		vn.variables.recodeContings.push(0);
+// 		vn.variables.recodeNotes.push([vn.elements.textareas[i].cloneNode(true)]);
+		vn.variables.recodeContings.push(-1);
+		vn.variables.recodeNotes.push([]);
 		
 		//==================================================================================
 		//set input values
 		//==================================================================================
-		(Vanillanote.elements.fontSizeInputs[i] as any).value = defaultFontSize;
-		(Vanillanote.elements.letterSpacingInputs[i] as any).value = "0";
-		(Vanillanote.elements.lineHeightInputs[i] as any).value = defaultLineHeight;
+		(vn.elements.fontSizeInputs[i] as any).value = defaultFontSize;
+		(vn.elements.letterSpacingInputs[i] as any).value = "0";
+		(vn.elements.lineHeightInputs[i] as any).value = defaultLineHeight;
 
-		(Vanillanote.elements.colorTextRInputs[i] as any).value = Vanillanote.variables.colorTextRs[i];
-		(Vanillanote.elements.colorTextGInputs[i] as any).value = Vanillanote.variables.colorTextGs[i];
-		(Vanillanote.elements.colorTextBInputs[i] as any).value = Vanillanote.variables.colorTextBs[i];
-		(Vanillanote.elements.colorTextOpacityInputs[i] as any).value = Vanillanote.variables.colorTextOs[i];
+		(vn.elements.colorTextRInputs[i] as any).value = vn.variables.colorTextRs[i];
+		(vn.elements.colorTextGInputs[i] as any).value = vn.variables.colorTextGs[i];
+		(vn.elements.colorTextBInputs[i] as any).value = vn.variables.colorTextBs[i];
+		(vn.elements.colorTextOpacityInputs[i] as any).value = vn.variables.colorTextOs[i];
 
-		(Vanillanote.elements.colorBackRInputs[i] as any).value = Vanillanote.variables.colorBackRs[i];
-		(Vanillanote.elements.colorBackGInputs[i] as any).value = Vanillanote.variables.colorBackGs[i];
-		(Vanillanote.elements.colorBackBInputs[i] as any).value = Vanillanote.variables.colorBackBs[i];
-		(Vanillanote.elements.colorBackOpacityInputs[i] as any).value = Vanillanote.variables.colorBackOs[i];
+		(vn.elements.colorBackRInputs[i] as any).value = vn.variables.colorBackRs[i];
+		(vn.elements.colorBackGInputs[i] as any).value = vn.variables.colorBackGs[i];
+		(vn.elements.colorBackBInputs[i] as any).value = vn.variables.colorBackBs[i];
+		(vn.elements.colorBackOpacityInputs[i] as any).value = vn.variables.colorBackOs[i];
 		
 		//==================================================================================
 		//set no using note function
 		//==================================================================================
-		if(!usingParagraphStyle) Vanillanote.elements.paragraphStyleSelects[i].style.display = "none";
-		if(!usingBold) Vanillanote.elements.boldButtons[i].style.display = "none";
-		if(!usingUnderline) Vanillanote.elements.underlineButtons[i].style.display = "none";
-		if(!usingItalic) Vanillanote.elements.italicButtons[i].style.display = "none";
-		if(!usingUl) Vanillanote.elements.ulButtons[i].style.display = "none";
-		if(!usingOl) Vanillanote.elements.olButtons[i].style.display = "none";
-		if(!usingTextAlign) Vanillanote.elements.textAlignSelects[i].style.display = "none";
-		if(!usingAttLink) Vanillanote.elements.attLinkButtons[i].style.display = "none";
-		if(!usingAttFile) Vanillanote.elements.attFileButtons[i].style.display = "none";
-		if(!usingAttImage) Vanillanote.elements.attImageButtons[i].style.display = "none";
-		if(!usingAttVideo) Vanillanote.elements.attVideoButtons[i].style.display = "none";
-		if(!usingFontSize) Vanillanote.elements.fontSizeInputBoxes[i].style.display = "none";
-		if(!usingLetterSpacing) Vanillanote.elements.letterSpacingInputBoxes[i].style.display = "none";
-		if(!usingLineHeight) Vanillanote.elements.lineHeightInputBoxes[i].style.display = "none";
-		if(!usingFontFamily) Vanillanote.elements.fontFamilySelects[i].style.display = "none";
-		if(!usingColorText) Vanillanote.elements.colorTextSelects[i].style.display = "none";
-		if(!usingColorBack) Vanillanote.elements.colorBackSelects[i].style.display = "none";
-		if(!usingFormatClear) Vanillanote.elements.formatClearButtons[i].style.display = "none";
-		if(!usingUndo) Vanillanote.elements.undoButtons[i].style.display = "none";
-		if(!usingRedo) Vanillanote.elements.redoButtons[i].style.display = "none";
-		if(!usingHelp) Vanillanote.elements.helpButtons[i].style.display = "none";
+		if(!usingParagraphStyle) vn.elements.paragraphStyleSelects[i].style.display = "none";
+		if(!usingBold) vn.elements.boldButtons[i].style.display = "none";
+		if(!usingUnderline) vn.elements.underlineButtons[i].style.display = "none";
+		if(!usingItalic) vn.elements.italicButtons[i].style.display = "none";
+		if(!usingUl) vn.elements.ulButtons[i].style.display = "none";
+		if(!usingOl) vn.elements.olButtons[i].style.display = "none";
+		if(!usingTextAlign) vn.elements.textAlignSelects[i].style.display = "none";
+		if(!usingAttLink) vn.elements.attLinkButtons[i].style.display = "none";
+		if(!usingAttFile) vn.elements.attFileButtons[i].style.display = "none";
+		if(!usingAttImage) vn.elements.attImageButtons[i].style.display = "none";
+		if(!usingAttVideo) vn.elements.attVideoButtons[i].style.display = "none";
+		if(!usingFontSize) vn.elements.fontSizeInputBoxes[i].style.display = "none";
+		if(!usingLetterSpacing) vn.elements.letterSpacingInputBoxes[i].style.display = "none";
+		if(!usingLineHeight) vn.elements.lineHeightInputBoxes[i].style.display = "none";
+		if(!usingFontFamily) vn.elements.fontFamilySelects[i].style.display = "none";
+		if(!usingColorText) vn.elements.colorTextSelects[i].style.display = "none";
+		if(!usingColorBack) vn.elements.colorBackSelects[i].style.display = "none";
+		if(!usingFormatClear) vn.elements.formatClearButtons[i].style.display = "none";
+		if(!usingUndo) vn.elements.undoButtons[i].style.display = "none";
+		if(!usingRedo) vn.elements.redoButtons[i].style.display = "none";
+		if(!usingHelp) vn.elements.helpButtons[i].style.display = "none";
 	}
 	
 	//==================================================================================
     //Create style element
     styleElement = document.createElement("style");
-    styleElement.setAttribute("id", Vanillanote.variables.noteName + "_styles-sheet");
+    styleElement.setAttribute("id", vn.variables.noteName + "_styles-sheet");
     styleElement.type = "text/css";
     
     if (styleElement.styleSheet) {
@@ -9114,7 +9115,7 @@ function createVanillanote(Vanillanote: Vanillanote) {
     }
     // Create google icons link cdn
     linkElementGoogleIcons = document.createElement("link");
-    linkElementGoogleIcons.setAttribute("id", Vanillanote.variables.noteName + "_icons-link")
+    linkElementGoogleIcons.setAttribute("id", vn.variables.noteName + "_icons-link")
     linkElementGoogleIcons.setAttribute("rel","stylesheet");
     linkElementGoogleIcons.setAttribute("href","https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0");
   	//==================================================================================
@@ -9125,14 +9126,14 @@ function createVanillanote(Vanillanote: Vanillanote) {
   	//==================================================================================
   	// To prevent the Google icon from initially displaying as text, it is shown after a delay of 0.1 seconds. 
   	setTimeout(function() {
-		for(var i = 0; i < Vanillanote.elements.templates.length; i++) {
-			Vanillanote.elements.templates[i].removeAttribute("style");
+		for(var i = 0; i < vn.elements.templates.length; i++) {
+			vn.elements.templates[i].removeAttribute("style");
 		}
 		// Resize the size.
 		elementsEvent["window_onResize"](event);
-	}, Vanillanote.variables.loadInterval);
+	}, vn.variables.loadInterval);
   	
-  	Vanillanote.variables.isCreated = true;
+  	vn.variables.isCreated = true;
 }
 
 function destroyVanillanote(vn: Vanillanote) {
